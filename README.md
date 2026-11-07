@@ -1,3 +1,5 @@
+![Three real status lines from the script, comfortable, getting close and critical](docs/banner.jpg)
+
 # Plimsoll - A customizable Claude Code status line
 
 [![tests](https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml/badge.svg)](https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml)
@@ -224,6 +226,7 @@ Drop at shrinking widths:
 python3 -m unittest discover -s tests -t .   # tests, Python 3.11+
 ./scripts/run-fixtures.sh                    # render every sample input
 python3 scripts/make-screenshots.py          # README images, needs Pillow and a Nerd Font
+python3 scripts/make-banner.py               # the banner, also needs Inter
 ```
 
 The tests freeze the clock and stub git, so every run gives the same result.

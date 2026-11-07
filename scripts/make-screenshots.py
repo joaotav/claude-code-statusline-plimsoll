@@ -74,8 +74,9 @@ class Fonts:
     """The Nerd Font, falling back per character to whichever installed font
     fontconfig picks for it, as a terminal does (the font lacks ⇡ and ⇣)."""
 
-    def __init__(self, path: str):
-        self.main = ImageFont.truetype(path, FONT_SIZE)
+    def __init__(self, path: str, size: int = FONT_SIZE):
+        self.size = size
+        self.main = ImageFont.truetype(path, size)
         out = subprocess.run(["fc-query", "-f", "%{charset}", path], capture_output=True, text=True).stdout
         self.ranges = [[int(n, 16) for n in r.split("-")] for r in out.split()]
         self.fallbacks: dict[str, ImageFont.FreeTypeFont] = {}
@@ -87,7 +88,7 @@ class Fonts:
             path = subprocess.run(
                 ["fc-match", "-f", "%{file}", f"monospace:charset={ord(ch):x}"], capture_output=True, text=True
             ).stdout
-            self.fallbacks[ch] = ImageFont.truetype(path, FONT_SIZE)
+            self.fallbacks[ch] = ImageFont.truetype(path, self.size)
         return self.fallbacks[ch]
 
 
