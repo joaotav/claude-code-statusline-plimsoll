@@ -1,5 +1,11 @@
 # claude-code-statusline-plimsoll
 
+[![tests](https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml/badge.svg)](https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml)
+![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
+![Linux | macOS](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)
+![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
+[![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A status line for Claude Code. It sits under the prompt and shows the
 directory, subscription usage (or the cost, with an API key), context, model,
 memory, git state, the agent or worktree when there is one, and the
