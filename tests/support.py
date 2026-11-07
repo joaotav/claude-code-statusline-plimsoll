@@ -85,6 +85,7 @@ def environment(
     if colour:
         os.environ.pop("NO_COLOR", None)  # restored by patch.dict on exit
     os.environ.pop("STATUSLINE_ICONS", None)  # the icons switch decides
+    os.environ.pop("STATUSLINE_ACCOUNT", None)
     stack.enter_context(
         mock.patch.dict(statusline.CONFIG, {"icons": icons, "colour": colour, "max_lines": max_lines})
     )

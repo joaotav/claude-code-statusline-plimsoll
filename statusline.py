@@ -36,7 +36,8 @@ CONFIG = {
     "show_model": True,
     "show_git": True,
     # The logged-in account's email, to tell accounts apart. Reads that one
-    # field from the active config dir's .claude.json.
+    # field from the active config dir's .claude.json. STATUSLINE_ACCOUNT=0
+    # also turns it off, without editing this file.
     "show_account": True,
     # System RAM in use out of the total. Linux and macOS.
     "show_memory": True,
@@ -753,7 +754,7 @@ def main() -> None:
         segments += filter(None, [git_segment(data)])
     if CONFIG["show_agent"]:
         segments += filter(None, [agent_segment(data)])
-    if CONFIG["show_account"]:
+    if CONFIG["show_account"] and os.environ.get("STATUSLINE_ACCOUNT") != "0":
         segments += filter(None, [account_segment()])
 
     if not segments:

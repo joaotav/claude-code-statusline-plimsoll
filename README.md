@@ -127,7 +127,8 @@ The last line renders a sample so you can check it works. Then add this to
 ```
 
 For the minimal line, put `STATUSLINE_ICONS=0 ` in front of the command.
-That leaves the script untouched, so `git pull` keeps working.
+To hide the account, put `STATUSLINE_ACCOUNT=0 ` there too. That leaves the
+script untouched, so `git pull` keeps working.
 
 `refreshInterval` keeps the numbers current while you're idle. If you use
 several accounts through `CLAUDE_CONFIG_DIR`, each config folder has its own
