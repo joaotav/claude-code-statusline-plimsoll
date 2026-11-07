@@ -1,9 +1,14 @@
-# claude-code-status
+# claude-code-statusline-plimsoll
 
 A status line for Claude Code. It sits under the prompt and shows the
 directory, subscription usage (or the cost, with an API key), context, model,
 memory, git state, the agent or worktree when there is one, and the
 logged-in account.
+
+It's named after the Plimsoll line, the mark painted on a ship's hull that
+shows how heavily it can safely be loaded. Below the mark is safe, and past
+it the ship is overloaded. This line does the same for Claude Code: it shows
+how close you are to your usage and context limits.
 
 The line fits the terminal. When the window gets too narrow, fields move to
 a second line first. Only when two lines aren't enough does it start dropping
@@ -99,8 +104,8 @@ only needed for the git field. The icons need a [Nerd Font](https://www.nerdfont
 and without one you'll want the minimal line.
 
 ```sh
-git clone https://github.com/joaotav/claude-code-status.git ~/claude-code-status
-cd ~/claude-code-status
+git clone https://github.com/joaotav/claude-code-statusline-plimsoll.git ~/claude-code-statusline-plimsoll
+cd ~/claude-code-statusline-plimsoll
 python3 scripts/make-fixtures.py > /dev/null && ./statusline.py < fixtures/full.json
 ```
 
@@ -111,7 +116,7 @@ The last line renders a sample so you can check it works. Then add this to
 {
   "statusLine": {
     "type": "command",
-    "command": "/home/you/claude-code-status/statusline.py",
+    "command": "/home/you/claude-code-statusline-plimsoll/statusline.py",
     "padding": 0,
     "refreshInterval": 60
   }
@@ -143,7 +148,7 @@ untouched, so `git pull` keeps working.
 For example, the minimal line without the account:
 
 ```json
-"command": "STATUSLINE_ICONS=0 STATUSLINE_ACCOUNT=0 /home/you/claude-code-status/statusline.py"
+"command": "STATUSLINE_ICONS=0 STATUSLINE_ACCOUNT=0 /home/you/claude-code-statusline-plimsoll/statusline.py"
 ```
 
 ### Settings in the script
@@ -192,19 +197,19 @@ context with an API key.
 
 ![The status line at its narrowest](docs/statusline-narrow.png)
 
-Wrap at 88 columns:
+Wrap at 80 columns:
 
 ```
-~/code/claude-code-status • 5h 23.5% [14:00] • 7d 41.2% [Sun 12:00] • 16k/200k 8%
-Opus 5.5 (high) • 7.8GB/14.8GB • claude-code-status:main !1 • me@example.com
+~/code/my-project • 5h 23.5% [14:00] • 7d 41.2% [Sun 12:00] • 16k/200k 8%
+Opus 5.5 (high) • 7.8GB/14.8GB • my-project:main !1 • me@example.com
 ```
 
 Drop at shrinking widths:
 
 ```
-126 cols  claude-code-status • 5h 23.5% • 7d 41.2% • 16k/200k • Opus 5.5 • 7.8GB/14.8GB • claude-code-status:main • me@example.com
- 87 cols  claude-code-status • 5h 23.5% • 7d 41.2% • 16k/200k • Opus 5.5
- 50 cols  5h 23.5% • 7d 41.2% • 16k/200k
+110 cols  my-project • 5h 23.5% • 7d 41.2% • 16k/200k • Opus 5.5 • 7.8GB/14.8GB • my-project:main • me@example.com
+ 71 cols  my-project • 5h 23.5% • 7d 41.2% • 16k/200k • Opus 5.5
+ 42 cols  5h 23.5% • 7d 41.2% • 16k/200k
 ```
 
 ## Development
