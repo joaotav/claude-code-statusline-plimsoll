@@ -1,4 +1,4 @@
-# claude-code-statusline-plimsoll
+# Plimsoll - A customizable Claude Code status line
 
 [![tests](https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml/badge.svg)](https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml)
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
