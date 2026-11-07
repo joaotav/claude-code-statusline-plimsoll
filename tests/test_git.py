@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -150,6 +153,59 @@ class GitOperationTest(unittest.TestCase):
     def test_rebase_of_a_detached_head_names_no_branch(self):
         self.write("rebase-merge/head-name", "detached HEAD\n")
         self.assertEqual(statusline.git_operation(self.git_dir), ("REBASE", None))
+
+
+@unittest.skipIf(sys.platform == "win32", "needs FIFOs")
+class TrappedGitDirTest(unittest.TestCase):
+    """A repo from an archive controls its .git. A file there that is not a
+    regular file (a FIFO, or a link to /dev/zero) must not hang the line or
+    fill memory. The traps here are FIFOs: skipped as /dev/zero would be, but
+    a regression only blocks on one, where /dev/zero would eat memory."""
+
+    def setUp(self):
+        self.git_dir = Path(self.enterContext(tempfile.TemporaryDirectory()))
+
+    def trap(self, name):
+        path = self.git_dir / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        os.mkfifo(path)
+
+    def returns(self, call):
+        """call()'s result, failing rather than hanging if it never returns."""
+        result = []
+        worker = threading.Thread(target=lambda: result.append(call()), daemon=True)
+        worker.start()
+        worker.join(5)
+        self.assertFalse(worker.is_alive(), "read did not return")
+        return result[0]
+
+    def test_trapped_stash_log(self):
+        self.trap("logs/refs/stash")
+        self.assertEqual(self.returns(lambda: statusline.stash_count(self.git_dir)), 0)
+
+    def test_trapped_rebase_step(self):
+        self.trap("rebase-merge/msgnum")
+        self.assertEqual(self.returns(lambda: statusline.git_operation(self.git_dir)), ("REBASE", None))
+
+    def test_trapped_commondir(self):
+        work = self.git_dir / "work"
+        work.mkdir()
+        (work / ".git").write_text(f"gitdir: {self.git_dir}\n")
+        self.trap("commondir")
+        dirs = self.returns(lambda: statusline.git_dirs(str(work)))
+        self.assertEqual(dirs[2], dirs[1])
+
+    def test_trapped_dot_git_is_not_a_repo(self):
+        work = self.git_dir / "work"
+        work.mkdir()
+        os.mkfifo(work / ".git")
+        self.assertIsNone(self.returns(lambda: statusline.git_dirs(str(work))))
+
+    def test_a_long_stash_log_is_read_only_in_part(self):
+        log = self.git_dir / "logs" / "refs" / "stash"
+        log.parent.mkdir(parents=True)
+        log.write_bytes((b"x" * 99 + b"\n") * 20000)  # 2 MB, 20000 entries
+        self.assertEqual(statusline.stash_count(self.git_dir), 2**20 // 100)
 
 
 @unittest.skipUnless(shutil.which("git"), "git not installed")

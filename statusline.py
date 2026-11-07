@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from datetime import datetime
@@ -476,6 +477,19 @@ def git_status(path: str) -> str | None:
     return out.stdout if out.returncode == 0 else None
 
 
+def read_capped(path: Path, limit: int = 4096) -> str | None:
+    """At most `limit` bytes of a regular file, or None. A repo that arrived
+    as an archive controls its .git: a link there to /dev/zero, or a FIFO,
+    must not hang the line or fill memory."""
+    try:
+        if not stat.S_ISREG(os.stat(path).st_mode):
+            return None
+        with open(path, "rb") as f:
+            return os.fsdecode(f.read(limit))
+    except (OSError, ValueError):
+        return None
+
+
 def git_dirs(path: str) -> tuple[Path, Path, Path] | None:
     """(worktree root, its git dir, the repo's common git dir), found without
     running git. In a linked worktree or a submodule .git is a file naming the
@@ -486,17 +500,12 @@ def git_dirs(path: str) -> tuple[Path, Path, Path] | None:
         if dot.is_dir():
             return d, dot, dot
         if dot.is_file():
-            try:
-                text = dot.read_text()
-            except OSError:
-                return None
-            if not text.startswith("gitdir:"):
+            text = read_capped(dot)
+            if text is None or not text.startswith("gitdir:"):
                 return None
             git_dir = (d / text[len("gitdir:") :].strip()).resolve()
-            try:
-                common = (git_dir / (git_dir / "commondir").read_text().strip()).resolve()
-            except OSError:
-                common = git_dir
+            common_rel = read_capped(git_dir / "commondir")
+            common = (git_dir / common_rel.strip()).resolve() if common_rel else git_dir
             return d, git_dir, common
     return None
 
@@ -520,10 +529,8 @@ def git_operation(git_dir: Path) -> tuple[str, str | None] | None:
     'MERGE', ...), with the branch a rebase is rewriting when it says."""
 
     def read(name: str) -> str | None:
-        try:
-            return (git_dir / name).read_text().strip() or None
-        except OSError:
-            return None
+        text = read_capped(git_dir / name)
+        return text.strip() or None if text else None
 
     for sub, step, total in (("rebase-merge", "msgnum", "end"), ("rebase-apply", "next", "last")):
         if (git_dir / sub).is_dir():
@@ -548,12 +555,10 @@ def git_operation(git_dir: Path) -> tuple[str, str | None] | None:
 
 def stash_count(common: Path) -> int:
     """Entries in the stash, one per line of its reflog: no git call, and no
-    --show-stash, which a git older than 2.35 refuses."""
-    try:
-        with open(common / "logs" / "refs" / "stash", "rb") as f:
-            return sum(1 for _ in f)
-    except OSError:
-        return 0
+    --show-stash, which a git older than 2.35 refuses. 1 MiB holds thousands
+    of entries."""
+    log = read_capped(common / "logs" / "refs" / "stash", 2**20)
+    return log.count("\n") if log else 0
 
 
 def git_segment(data: dict) -> tuple[int, list[str]] | None:
