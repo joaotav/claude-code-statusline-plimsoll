@@ -10,12 +10,11 @@ a second line first. Only when two lines aren't enough does it start dropping
 detail, and then whole fields. Usage and context are never dropped. See details in
 [Narrow terminals](#narrow-terminals).
 
-**With icons**, the default.
+**With icons (default):**
 
 ![The status line with Nerd Font icons](docs/statusline-icons.png)
 
-**Minimal**, plain text. Set `STATUSLINE_ICONS=0` to get it, as
-[Icons or minimal](#icons-or-minimal) explains.
+**Minimal (see [Icons or minimal](#icons-or-minimal) explains):**
 
 ![The same line as plain text](docs/statusline-plain.png)
 
