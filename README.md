@@ -8,19 +8,15 @@
 ![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A status line for Claude Code. It sits under the prompt and shows the
-directory, subscription usage (or the cost, with an API key), context, model,
-memory, git state, the agent or worktree when there is one, and the
-logged-in account.
+A status line for Claude Code. It shows how close you are to your usage and
+context limits, along with the model, git state and more.
 
 It's named after the Plimsoll line, the mark painted on a ship's hull that
 shows how heavily it can safely be loaded. Below the mark is safe, and past
-it the ship is overloaded. This line does the same for Claude Code: it shows
-how close you are to your usage and context limits.
+it the ship is overloaded. This line does the same for Claude Code.
 
-The line fits the terminal. When the window gets too narrow, fields move to
-a second line first. Only when two lines aren't enough does it start dropping
-detail, and then whole fields. Usage and context are never dropped. See details in
+The line fits the terminal: on a narrow window it wraps, then sheds detail,
+and usage and context are never dropped. See
 [Narrow terminals](#narrow-terminals).
 
 **With icons (default):**
@@ -69,25 +65,18 @@ still the main repository's.
 
 ## Design choices
 
-- **Nothing is fetched.** Everything comes from the JSON Claude Code passes
-  in, one local `git status` and a few files under `.git`, Claude Code's
-  account file and the OS memory figures. There's no daemon, cache or network call, and a render takes
-  about 40 ms.
 - **Missing means hidden.** An unknown value is left out instead of being
   shown as `0%`.
-- **Usage stays on screen.** Quota, cost and context are never dropped on a
-  narrow terminal.
 - **Reset times are clock times.** A countdown goes stale between refreshes,
   and `19:45` doesn't.
 - **Cost only when it's a bill.** Claude Code prices every session at API
-  rates. With an API key that is what you pay, so it shows. On a
-  subscription it would be an estimate, so it's left out. A session without
-  the 5-hour and weekly limits counts as an API key, and the cost shows from
-  its first cent.
+  rates, which is a bill only with an API key. The cost shows only for
+  sessions without the 5-hour and weekly limits.
 
 ## Privacy
 
-The script stores nothing and sends nothing. It reads four things:
+The script stores nothing and sends nothing: there's no daemon, cache or
+network call, and a render takes about 40 ms. It reads four things:
 
 - The JSON Claude Code passes it. It uses the directory, model, effort,
   agent, worktree, limits, cost and context size, and never the transcript.
@@ -135,12 +124,7 @@ The last line renders a sample so you can check it works. Then add this to
 several accounts through `CLAUDE_CONFIG_DIR`, each config folder has its own
 `settings.json`, and each one needs the block. To update, run `git pull`.
 
-To change what the line shows, see [Configuration](#configuration).
-
 ## Configuration
-
-Change the line with environment variables in the `statusLine` command, or
-by editing `CONFIG` at the top of `statusline.py`.
 
 ### Environment variables
 
@@ -166,8 +150,8 @@ Edit `CONFIG` at the top of `statusline.py`.
 | Key | Default | Effect |
 |---|---|---|
 | `show_cwd`, `show_quota`, `show_cost`, `show_context`, `show_model`, `show_memory`, `show_git`, `show_agent`, `show_account` | `True` | Each field |
-| `icons` | `True` | Nerd Font icons. `False` gives the minimal line, and so does `STATUSLINE_ICONS=0` |
-| `colour` | `True` | Colour. Setting `NO_COLOR` also turns it off |
+| `icons` | `True` | Nerd Font icons. `False` gives the minimal line |
+| `colour` | `True` | Colour |
 | `warn_at`, `crit_at` | `60`, `85` | Percentages that turn yellow and red |
 | `separator` | `" • "` | Goes between fields, drawn dim |
 | `max_lines` | `2` | `2` wraps, `1` drops. See [Narrow terminals](#narrow-terminals) |
@@ -178,11 +162,8 @@ Edit `CONFIG` at the top of `statusline.py`.
 
 ### Icons or minimal
 
-Each field starts with a Nerd Font icon by default. Turn `icons` off and the
-line becomes plain text with almost no labels. A token count, a GB figure, a
-branch and an email are easy to tell apart without one. The two quotas are
-the exception. Two bare percentages side by side would look the same, so
-they keep the short labels `5h` and `7d`.
+Turn icons off for plain text with almost no labels. The two quotas keep
+`5h` and `7d`, since two bare percentages would look the same.
 
 ### Narrow terminals
 
@@ -199,11 +180,6 @@ times go first, then the context percentage, the full path, the git symbols
 and the effort level. After that whole fields go, starting with the account,
 then agent, memory, git, model and directory. Quota, cost and context always
 stay, and widening the window brings everything back.
-
-At its narrowest the line is just the two quotas and context, or the cost and
-context with an API key.
-
-![The status line at its narrowest](docs/statusline-narrow.png)
 
 Wrap at 80 columns:
 
@@ -229,11 +205,8 @@ python3 scripts/make-screenshots.py          # README images, needs Pillow and a
 python3 scripts/make-banner.py               # the banner, also needs Inter
 ```
 
-The tests freeze the clock and stub git, so every run gives the same result.
-Some run real git in throwaway repositories, covering worktrees, stashes and
-a rebase and a merge stopped on a conflict. A few read the machine's real
-memory figures. CI runs
-them on Linux and macOS with Python 3.11 and 3.14.
+The tests freeze the clock and stub git. Some run real git and read real
+memory. CI runs them on Linux and macOS.
 
 ## Acknowledgements
 

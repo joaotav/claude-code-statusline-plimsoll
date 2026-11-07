@@ -38,11 +38,10 @@ SGR = {
     "2": "#5c6370",
 }
 
-# (file, icons, columns): full width both ways, and the narrowest the line gets.
+# (file, icons, columns): full width, with icons and without.
 SHOTS = [
     ("statusline-icons.png", True, 300),
     ("statusline-plain.png", False, 300),
-    ("statusline-narrow.png", True, 20),
 ]
 
 
