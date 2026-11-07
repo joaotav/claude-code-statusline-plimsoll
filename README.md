@@ -7,7 +7,7 @@ logged-in account.
 
 The line fits the terminal. When the window gets too narrow, fields move to
 a second line first. Only when two lines aren't enough does it start dropping
-detail, and then whole fields. Usage and context never go. More in
+detail, and then whole fields. Usage and context are never dropped. See details in
 [Narrow terminals](#narrow-terminals).
 
 **With icons**, the default.
@@ -37,8 +37,7 @@ detail, and then whole fields. Usage and context never go. More in
 Percentages and memory turn yellow at 60% and red at 85%. From 85% they
 also get a `⚠`, so the warning shows without colour too.
 
-The git symbols follow Starship and Powerlevel10k, and each one hides when
-its count is zero.
+The git symbols follow the same format as Starship and Powerlevel10k, and remain hidden when their count is zero.
 
 | Symbol | Means | Colour |
 |---|---|---|
