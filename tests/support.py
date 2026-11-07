@@ -90,6 +90,8 @@ def environment(
     )
     stack.enter_context(mock.patch.object(statusline, "git_status", return_value=git))
     stack.enter_context(mock.patch.object(statusline, "repo_name", return_value=repo))
+    # No git dir: no operation or stash, unless a test supplies one.
+    stack.enter_context(mock.patch.object(statusline, "git_dirs", return_value=None))
     stack.enter_context(mock.patch.object(statusline, "account_email", return_value=account))
     stack.enter_context(mock.patch.object(statusline, "memory_reading", return_value=memory))
     return stack

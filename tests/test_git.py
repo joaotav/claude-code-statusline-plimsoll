@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 import statusline
-from statusline import BLUE, CYAN, GREEN, MAGENTA, RED, RESET, YELLOW
+from statusline import BLUE, CYAN, DIM, GREEN, MAGENTA, RED, RESET, YELLOW
 from tests.support import changed, environment, porcelain, renamed, unmerged, untracked
 
 DATA = {"cwd": "/work/repo"}
@@ -37,7 +37,7 @@ class GitSegmentTest(unittest.TestCase):
             "deletion staged": (changed("D."), "✘1"),
             "renamed": (renamed(), "+1"),
             "untracked": (untracked(), "?1"),
-            "merge conflict": (unmerged(), "!1"),
+            "merge conflict": (unmerged(), "=1"),
         }
         for name, (entry, symbols) in cases.items():
             with self.subTest(name):
@@ -48,8 +48,8 @@ class GitSegmentTest(unittest.TestCase):
         self.assertEqual(self.render(status), "repo:main !2 ?1")
 
     def test_symbols_keep_a_fixed_order(self):
-        status = porcelain(untracked(), changed(".D"), changed("A."), changed(".M"), ab="+1 -1")
-        self.assertEqual(self.render(status), "repo:main !1 +1 ?1 ✘1 ⇡1 ⇣1")
+        status = porcelain(untracked(), changed(".D"), changed("A."), changed(".M"), unmerged(), ab="+1 -1")
+        self.assertEqual(self.render(status), "repo:main =1 !1 +1 ?1 ✘1 ⇡1 ⇣1")
 
     def test_ahead_and_behind(self):
         self.assertEqual(self.render(porcelain(ab="+2 -0")), "repo:main ⇡2")
@@ -73,6 +73,26 @@ class GitSegmentTest(unittest.TestCase):
         self.assertEqual(variants[0], "repo:main ?1")
         self.assertEqual(variants[-1], "repo:main")
 
+    def test_conflict_counts_only_as_a_conflict(self):
+        # Deleted by them: once a conflict, not also a deletion.
+        z = "0" * 40
+        entry = f"u UD N... 100644 100644 000000 100644 {z} {z} {z} file"
+        self.assertEqual(self.render(porcelain(entry)), "repo:main =1")
+
+    def test_operation_and_stashes(self):
+        git_dir = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        (git_dir / "rebase-merge").mkdir()
+        for name, text in (("msgnum", "2"), ("end", "5"), ("head-name", "refs/heads/side")):
+            (git_dir / "rebase-merge" / name).write_text(text + "\n")
+        (git_dir / "logs" / "refs").mkdir(parents=True)
+        (git_dir / "logs" / "refs" / "stash").write_text("a\nb\n")
+        status = porcelain(unmerged(), head="(detached)")
+        with environment(git=status, colour=True), mock.patch.object(statusline, "git_dirs", return_value=(git_dir, git_dir, git_dir)):
+            variants = statusline.git_segment(DATA)[1]
+        self.assertEqual(variants[0], f"repo:side|{YELLOW}REBASE 2/5{RESET} {RED}=1{RESET} {DIM}$2{RESET}")
+        # A narrow terminal sheds the counts but keeps the operation.
+        self.assertEqual(variants[-1], f"repo:side|{YELLOW}REBASE 2/5{RESET}")
+
     def test_no_git_output_hides_the_segment(self):
         self.assertIsNone(self.render(None))
 
@@ -81,9 +101,10 @@ class GitSegmentTest(unittest.TestCase):
             self.assertIsNone(statusline.git_segment({}))
 
     def test_each_symbol_has_its_colour(self):
-        status = porcelain(untracked(), changed(".D"), changed("A."), changed(".M"), ab="+1 -1")
+        status = porcelain(untracked(), changed(".D"), changed("A."), changed(".M"), unmerged(), ab="+1 -1")
         line = self.render(status, colour=True)
         for text, code in (
+            ("=1", RED),
             ("!1", YELLOW),
             ("+1", GREEN),
             ("?1", BLUE),
@@ -93,6 +114,42 @@ class GitSegmentTest(unittest.TestCase):
         ):
             with self.subTest(text):
                 self.assertIn(f"{code}{text}{RESET}", line)
+
+
+class GitOperationTest(unittest.TestCase):
+    def setUp(self):
+        self.git_dir = Path(self.enterContext(tempfile.TemporaryDirectory()))
+
+    def write(self, name, text=""):
+        path = self.git_dir / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+
+    def test_nothing_in_progress(self):
+        self.assertIsNone(statusline.git_operation(self.git_dir))
+
+    def test_each_marker_names_its_operation(self):
+        for marker, label in (
+            ("MERGE_HEAD", "MERGE"),
+            ("CHERRY_PICK_HEAD", "CHERRY-PICK"),
+            ("REVERT_HEAD", "REVERT"),
+            ("BISECT_LOG", "BISECT"),
+        ):
+            with self.subTest(marker):
+                self.write(marker)
+                self.assertEqual(statusline.git_operation(self.git_dir), (label, None))
+                (self.git_dir / marker).unlink()
+
+    def test_apply_style_rebase_and_am(self):
+        self.write("rebase-apply/next", "1\n")
+        self.write("rebase-apply/last", "3\n")
+        self.assertEqual(statusline.git_operation(self.git_dir), ("REBASE 1/3", None))
+        self.write("rebase-apply/applying")
+        self.assertEqual(statusline.git_operation(self.git_dir), ("AM 1/3", None))
+
+    def test_rebase_of_a_detached_head_names_no_branch(self):
+        self.write("rebase-merge/head-name", "detached HEAD\n")
+        self.assertEqual(statusline.git_operation(self.git_dir), ("REBASE", None))
 
 
 @unittest.skipUnless(shutil.which("git"), "git not installed")
@@ -117,6 +174,61 @@ class RealRepoTest(unittest.TestCase):
         sub = self.repo / "a" / "b"
         sub.mkdir(parents=True)
         self.assertEqual(statusline.repo_name(str(sub)), "demo")
+
+    def git(self, *args, cwd=None):
+        subprocess.run(
+            ["git", "-C", str(cwd or self.repo), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            check=True,
+            capture_output=True,
+        )
+
+    def commit(self, text, message):
+        (self.repo / "f").write_text(text)
+        self.git("add", "f")
+        self.git("commit", "-q", "-m", message)
+
+    def test_linked_worktree_names_the_main_repo(self):
+        self.commit("a", "init")
+        tree = self.dir / "demo-hotfix"
+        self.git("worktree", "add", "-q", str(tree), "-b", "hotfix")
+        self.assertEqual(statusline.repo_name(str(tree)), "demo")
+        self.assertEqual(statusline.git_segment({"cwd": str(tree)})[1][0], "demo:hotfix")
+
+    def test_stashes_are_counted(self):
+        self.commit("a", "init")
+        for text in ("b", "c"):
+            (self.repo / "f").write_text(text)
+            self.git("stash", "-q")
+        self.assertEqual(statusline.git_segment({"cwd": str(self.repo)})[1][0], "demo:main $2")
+
+    def test_stashes_show_in_a_linked_worktree_too(self):
+        self.commit("a", "init")
+        (self.repo / "f").write_text("b")
+        self.git("stash", "-q")
+        tree = self.dir / "demo-hotfix"
+        self.git("worktree", "add", "-q", str(tree), "-b", "hotfix")
+        self.assertEqual(statusline.git_segment({"cwd": str(tree)})[1][0], "demo:hotfix $1")
+
+    def test_rebase_stopped_on_a_conflict(self):
+        self.commit("a", "init")
+        self.git("checkout", "-q", "-b", "side")
+        self.commit("side", "side")
+        self.git("checkout", "-q", "main")
+        self.commit("main", "main")
+        self.git("checkout", "-q", "side")
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.git("rebase", "main")
+        self.assertEqual(statusline.git_segment({"cwd": str(self.repo)})[1][0], "demo:side|REBASE 1/1 =1")
+
+    def test_merge_stopped_on_a_conflict(self):
+        self.commit("a", "init")
+        self.git("checkout", "-q", "-b", "side")
+        self.commit("side", "side")
+        self.git("checkout", "-q", "main")
+        self.commit("main", "main")
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.git("merge", "side")
+        self.assertEqual(statusline.git_segment({"cwd": str(self.repo)})[1][0], "demo:main|MERGE =1")
 
     def test_outside_a_repo_hides_the_segment(self):
         self.assertIsNone(statusline.git_status(str(self.dir)))

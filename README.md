@@ -40,14 +40,19 @@ its count is zero.
 
 | Symbol | Means | Colour |
 |---|---|---|
+| `=` | Conflicted | Red |
 | `!` | Modified | Yellow |
 | `+` | Staged | Green |
 | `?` | Untracked | Blue |
 | `✘` | Deleted | Red |
+| `$` | Stashed | Dim |
 | `⇡` | To push | Cyan |
 | `⇣` | To pull | Magenta |
 
-A detached HEAD shows as `@a1b2c3d`.
+A detached HEAD shows as `@a1b2c3d`. During a rebase, merge, cherry-pick,
+revert or bisect, the operation follows the branch in yellow, as in
+`my-project:feature|REBASE 2/5 =1`. Inside a linked worktree the name is
+still the main repository's.
 
 ## Icons or minimal
 
@@ -79,7 +84,8 @@ The script stores nothing and sends nothing. It reads four things:
 - The JSON Claude Code passes it. It uses the directory, model, effort,
   agent, worktree, limits and context size, and never the transcript.
 - One read-only `git status`. It never takes the index lock and gives up
-  after 0.5 s.
+  after 0.5 s. A few files under `.git` are also read, to spot a rebase or
+  merge and count stashes.
 - `.claude.json`, and only the account email in it. The login token is kept
   in a different file, which is never opened.
 - The system memory totals, from `/proc/meminfo` or `vm_stat`.

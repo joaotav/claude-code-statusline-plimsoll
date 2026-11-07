@@ -455,24 +455,97 @@ def git_status(path: str) -> str | None:
     return out.stdout if out.returncode == 0 else None
 
 
-def repo_name(path: str) -> str | None:
+def git_dirs(path: str) -> tuple[Path, Path, Path] | None:
+    """(worktree root, its git dir, the repo's common git dir), found without
+    running git. In a linked worktree or a submodule .git is a file naming the
+    git dir; a worktree's git dir names the common one in `commondir`."""
     p = Path(path).resolve()
     for d in (p, *p.parents):
-        if (d / ".git").exists():
-            return d.name
+        dot = d / ".git"
+        if dot.is_dir():
+            return d, dot, dot
+        if dot.is_file():
+            try:
+                text = dot.read_text()
+            except OSError:
+                return None
+            if not text.startswith("gitdir:"):
+                return None
+            git_dir = (d / text[len("gitdir:") :].strip()).resolve()
+            try:
+                common = (git_dir / (git_dir / "commondir").read_text().strip()).resolve()
+            except OSError:
+                common = git_dir
+            return d, git_dir, common
     return None
 
 
+def repo_name(path: str) -> str | None:
+    """The repository's folder name; in a linked worktree, the main repo's,
+    not the worktree's."""
+    dirs = git_dirs(path)
+    if dirs is None:
+        return None
+    root, git_dir, common = dirs
+    if common == git_dir:
+        return root.name
+    # proj/.git -> proj; a bare repo's proj.git -> proj.
+    name = common.parent.name if common.name == ".git" else common.name
+    return name[: -len(".git")] if name.endswith(".git") else name
+
+
+def git_operation(git_dir: Path) -> tuple[str, str | None] | None:
+    """The operation in progress, named as Starship names it ('REBASE 1/3',
+    'MERGE', ...), with the branch a rebase is rewriting when it says."""
+
+    def read(name: str) -> str | None:
+        try:
+            return (git_dir / name).read_text().strip() or None
+        except OSError:
+            return None
+
+    for sub, step, total in (("rebase-merge", "msgnum", "end"), ("rebase-apply", "next", "last")):
+        if (git_dir / sub).is_dir():
+            kind = "AM" if (git_dir / sub / "applying").exists() else "REBASE"
+            at, of = read(f"{sub}/{step}"), read(f"{sub}/{total}")
+            branch = read(f"{sub}/head-name")
+            if branch and branch.startswith("refs/heads/"):
+                branch = branch[len("refs/heads/") :]
+            else:
+                branch = None
+            return (f"{kind} {at}/{of}" if at and of else kind), branch
+    for marker, label in (
+        ("MERGE_HEAD", "MERGE"),
+        ("CHERRY_PICK_HEAD", "CHERRY-PICK"),
+        ("REVERT_HEAD", "REVERT"),
+        ("BISECT_LOG", "BISECT"),
+    ):
+        if (git_dir / marker).exists():
+            return label, None
+    return None
+
+
+def stash_count(common: Path) -> int:
+    """Entries in the stash, one per line of its reflog: no git call, and no
+    --show-stash, which a git older than 2.35 refuses."""
+    try:
+        with open(common / "logs" / "refs" / "stash", "rb") as f:
+            return sum(1 for _ in f)
+    except OSError:
+        return 0
+
+
 def git_segment(data: dict) -> tuple[int, list[str]] | None:
-    """'repo:branch' plus Starship's symbols: !modified +staged ?untracked
-    ✘deleted ⇡ahead ⇣behind, each omitted at zero."""
+    """'repo:branch', '|REBASE 1/3' and the like mid-operation, then
+    Starship's symbols: =conflicted !modified +staged ?untracked ✘deleted
+    $stashed ⇡ahead ⇣behind, each omitted at zero."""
     path = session_dir(data)
     status = git_status(path) if path else None
     if status is None:
         return None
 
     head = oid = None
-    ahead = behind = modified = staged = untracked = deleted = 0
+    ahead = behind = conflicted = modified = staged = untracked = deleted = 0
     for line in status.splitlines():
         if line.startswith("# branch.oid "):
             oid = line.split()[2]
@@ -485,30 +558,39 @@ def git_segment(data: dict) -> tuple[int, list[str]] | None:
             untracked += 1
         elif line[:2] in ("1 ", "2 ", "u "):
             # XY: index (staged) status, then worktree status; '.' is unchanged.
+            if line[0] == "u":
+                conflicted += 1  # whatever each side did, it waits on you
+                continue
             x, y = line[2], line[3]
             if "D" in (x, y):
                 deleted += 1
-            if line[0] == "u":
-                modified += 1  # merge conflict: needs your attention like an edit
-                continue
             if x not in ".D":
                 staged += 1
             if y in "MT":
                 modified += 1
 
-    if head == "(detached)" and oid:
+    dirs = git_dirs(path)
+    operation = git_operation(dirs[1]) if dirs else None
+    if head == "(detached)" and operation and operation[1]:
+        head = operation[1]  # a rebase detaches HEAD; name the branch it rewrites
+    elif head == "(detached)" and oid:
         head = f"@{oid[:7]}"
     if not head:
         return None
+    if operation:
+        # Kept when narrow, like the branch: it changes what any command does.
+        head = f"{printable(head)}|{paint(operation[0], YELLOW)}"
     repo = repo_name(path)
     base = labelled("git", f"{printable(repo)}:{head}" if repo else head)
     # Staged green, unstaged yellow and untracked blue, as `git status` and
     # Powerlevel10k colour them; arrows apart so push and pull read distinctly.
     counts = (
+        ("=", conflicted, RED),
         ("!", modified, YELLOW),
         ("+", staged, GREEN),
         ("?", untracked, BLUE),
         ("✘", deleted, RED),
+        ("$", stash_count(dirs[2]) if dirs else 0, DIM),
         ("⇡", ahead, CYAN),
         ("⇣", behind, MAGENTA),
     )
