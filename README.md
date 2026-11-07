@@ -1,7 +1,8 @@
 # claude-code-status
 
 A status line for Claude Code. It sits under the prompt and shows the
-directory, subscription usage, context, model, memory, git state and the
+directory, subscription usage (or the cost, with an API key), context, model,
+memory, git state, the agent or worktree when there is one, and the
 logged-in account.
 
 The line fits the terminal. When the window gets too narrow, fields move to
@@ -66,8 +67,8 @@ they keep the short labels `5h` and `7d`.
 ## Design choices
 
 - **Nothing is fetched.** Everything comes from the JSON Claude Code passes
-  in, one local `git status`, Claude Code's account file and the OS memory
-  figures. There's no daemon, cache or network call, and a render takes
+  in, one local `git status` and a few files under `.git`, Claude Code's
+  account file and the OS memory figures. There's no daemon, cache or network call, and a render takes
   about 40 ms.
 - **Missing means hidden.** An unknown value is left out instead of being
   shown as `0%`.
@@ -94,9 +95,10 @@ The script stores nothing and sends nothing. It reads four things:
   in a different file, which is never opened.
 - The system memory totals, from `/proc/meminfo` or `vm_stat`.
 
-It uses only Python's standard library. The directory, repository and email
-do show on screen, so turn off `show_cwd`, `show_git` and `show_account`
-before sharing your screen.
+It uses only Python's standard library. The directory, repository, agent
+and email do show on screen, so turn off `show_cwd`, `show_git`, `show_agent`
+and `show_account` before sharing your screen. `STATUSLINE_ACCOUNT=0` hides
+the email without editing the script.
 
 ## Install
 
@@ -151,6 +153,15 @@ Edit `CONFIG` at the top of `statusline.py`.
 `show_input_tokens`, `show_cache_split`, `show_output_tokens`,
 `show_duration` and `show_lines_changed` also exist, and are off by default.
 
+Three environment variables work without editing the file. Put them in front
+of the `statusLine` command:
+
+| Variable | Effect |
+|---|---|
+| `STATUSLINE_ICONS=0` | The minimal line, as `icons: False` |
+| `STATUSLINE_ACCOUNT=0` | No account email, as `show_account: False` |
+| `NO_COLOR=1` | No colour, as `colour: False` |
+
 ## Narrow terminals
 
 There are two ways to handle a narrow window, and one is chosen with
@@ -196,7 +207,9 @@ python3 scripts/make-screenshots.py          # README images, needs Pillow and a
 ```
 
 The tests freeze the clock and stub git, so every run gives the same result.
-A few use a real repository and the machine's real memory figures. CI runs
+Some run real git in throwaway repositories, covering worktrees, stashes and
+a rebase and a merge stopped on a conflict. A few read the machine's real
+memory figures. CI runs
 them on Linux and macOS with Python 3.11 and 3.14.
 
 ## Not included
@@ -204,6 +217,10 @@ them on Linux and macOS with Python 3.11 and 3.14.
 Per-model weekly limits and the extra-usage balance. Claude Code doesn't
 pass them to status lines, and fetching them would mean reading the login
 token, which this script won't do.
+
+Subagents running in the background. Status lines get only the `--agent`
+name, and the rest is in the session transcript, which this script never
+reads.
 
 ## Acknowledgements
 
@@ -215,6 +232,9 @@ The following projects served as inspiration for this mod:
 - [Starship](https://starship.rs) and
   [Powerlevel10k](https://github.com/romkatv/powerlevel10k), for the git
   status symbols and colours.
+- [claude-code-statusline](https://github.com/kcchien/claude-code-statusline)
+  by kcchien, for the warning sign beside a critical value and for showing
+  the agent and worktree.
 - [Token Weather Usage](https://github.com/augiefra/claude-mods/tree/main/plugins/token-weather-usage)
   by augiefra, which was reviewed while deciding which fields deserve a
   place on the line.
