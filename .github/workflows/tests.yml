@@ -26,3 +26,17 @@ jobs:
 
       - name: Render every fixture
         run: ./scripts/run-fixtures.sh
+
+  oldest-python:
+    # The script supports 3.8, but the unit tests need 3.11, so this only
+    # renders the samples. Pinned: there's no 3.8 build for Ubuntu 26.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.8"
+
+      - name: Render every fixture
+        run: ./scripts/run-fixtures.sh
