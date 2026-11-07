@@ -39,6 +39,7 @@ class OrderTest(unittest.TestCase):
             self.assertNotIn(ACCOUNT, run_main(payload()))
 
     def test_session_cost_is_not_shown(self):
+        # A subscription: the cost would be an estimate, not a bill.
         with environment(git=GIT):
             self.assertNotIn("$", run_main(payload()))
 
@@ -157,6 +158,48 @@ class WrapTest(unittest.TestCase):
                 self.assertEqual(shown, [f for f in order if f in shown])
 
 
+def api_payload(cost=1.2345) -> dict:
+    """An API-key session: no quotas, and a cost that is a bill."""
+    data = payload()
+    del data["rate_limits"]
+    data["cost"]["total_cost_usd"] = cost
+    return data
+
+
+class CostTest(unittest.TestCase):
+    def test_api_session_shows_its_cost_after_the_cwd(self):
+        with environment(git=GIT, account=ACCOUNT, memory=MEMORY):
+            line = run_main(api_payload())
+        self.assertEqual(
+            line,
+            "~/…/demo • $1.23 • 16k/200k 8% • Opus 5.5 (high) • 7.6GB/14.8GB • "
+            "repo:main !1 ?1 ⇡2 • me@example.com",
+        )
+
+    def test_icon(self):
+        with environment(icons=True):
+            line = run_main(api_payload())
+        self.assertIn(f"{statusline.ICONS['cost']} $1.23", line)
+
+    def test_nothing_spent_yet_is_hidden(self):
+        # A subscription session also lacks quotas until its first response.
+        with environment():
+            self.assertNotIn("$", run_main(api_payload(cost=0)))
+
+    def test_missing_or_invalid_cost_is_hidden(self):
+        for cost in (None, "free"):
+            with self.subTest(cost), environment():
+                self.assertNotIn("$", run_main(api_payload(cost=cost)))
+
+    def test_never_dropped(self):
+        with environment(git=GIT, account=ACCOUNT, memory=MEMORY):
+            self.assertEqual(run_main(api_payload(), columns=20), "$1.23 • 16k/200k")
+
+    def test_can_be_turned_off(self):
+        with environment(), mock.patch.dict(statusline.CONFIG, {"show_cost": False}):
+            self.assertNotIn("$", run_main(api_payload()))
+
+
 class AgentTest(unittest.TestCase):
     def test_plain_session_has_no_agent_field(self):
         with environment():
@@ -199,6 +242,8 @@ class LabelsAndColourTest(unittest.TestCase):
         with environment(icons=True, git=GIT, account=ACCOUNT, memory=MEMORY):
             line = run_main(data)
         for key, icon in statusline.ICONS.items():
+            if key == "cost":
+                continue  # API keys only, where the quotas are absent; see CostTest
             with self.subTest(key):
                 self.assertIn(icon, line)
         for label in statusline.TEXT_LABELS.values():

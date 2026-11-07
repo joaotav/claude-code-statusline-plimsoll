@@ -29,6 +29,9 @@ CONFIG = {
     # Segments, in display order.
     "show_cwd": True,
     "show_quota": True,
+    # The session's cost, with an API key only: on a subscription it is an
+    # API-price estimate, not a bill.
+    "show_cost": True,
     "show_context": True,
     "show_model": True,
     "show_git": True,
@@ -71,6 +74,7 @@ ICONS = {
     "five_hour": "\uf017",  # nf-fa-clock_o
     "seven_day": "\uf073",  # nf-fa-calendar
     "context": "\uf1c0",  # nf-fa-database
+    "cost": "\uf0d6",  # nf-fa-money
     "model": "\uf2db",  # nf-fa-microchip
     "git": "\ue0a0",  # nf-pl-branch
     "account": "\uf007",  # nf-fa-user
@@ -352,6 +356,22 @@ def quota_segments(data: dict) -> list[tuple[int, list[str]]]:
         if seg:
             segs.append(seg)
     return segs
+
+
+def cost_segment(data: dict) -> tuple[int, list[str]] | None:
+    """What an API-key session has cost so far. Claude Code prices every
+    session at API rates, so the figure is a bill only without the
+    subscription's rate_limits; $0, before the first response, says nothing."""
+    if data.get("rate_limits") is not None:
+        return None
+    try:
+        cost = float(dig(data, "cost", "total_cost_usd"))
+    except (TypeError, ValueError):
+        return None
+    if cost <= 0:
+        return None
+    # In place of the quotas an API key lacks, so never dropped either.
+    return (0, [labelled("cost", f"${cost:.2f}")])
 
 
 def context_segments(data: dict) -> list[tuple[int, list[str]]]:
@@ -715,10 +735,12 @@ def main() -> None:
 
     # Priority decides what drops when even the sparsest variants overflow:
     # highest number first, so account, agent, memory, git, model and cwd;
-    # quota and context (priority 0) never drop.
+    # quota, cost and context (priority 0) never drop.
     segments: list[tuple[int, list[str]]] = []
     if CONFIG["show_cwd"]:
         segments += filter(None, [cwd_segment(data)])
+    if CONFIG["show_cost"]:
+        segments += filter(None, [cost_segment(data)])
     if CONFIG["show_quota"]:
         segments += quota_segments(data)
     if CONFIG["show_context"]:

@@ -25,6 +25,7 @@ detail, and then whole fields. Usage and context never go. More in
 | Directory | `~/…/my-project` | Where the session works |
 | 5-hour limit | `5h 23.5% [19:45]` | Share used, and when it resets |
 | Weekly limit | `7d 41.2% [Thu 14:00]` | Share used, and when it resets |
+| Cost | `$1.23` | What the session has cost, with an API key only |
 | Context | `477k/1M 48%` | How full the context window is |
 | Model | `Opus 5.5 (high)` | Model and effort level |
 | Memory | `7.6GB/14.8GB` | System RAM in use, as `free -h` counts it |
@@ -70,19 +71,22 @@ they keep the short labels `5h` and `7d`.
   about 40 ms.
 - **Missing means hidden.** An unknown value is left out instead of being
   shown as `0%`.
-- **Usage stays on screen.** Quota and context are never dropped on a narrow
-  terminal.
+- **Usage stays on screen.** Quota, cost and context are never dropped on a
+  narrow terminal.
 - **Reset times are clock times.** A countdown goes stale between refreshes,
   and `19:45` doesn't.
-- **No session cost.** On a subscription it would be an estimate, not a
-  bill, so it's left out.
+- **Cost only when it's a bill.** Claude Code prices every session at API
+  rates. With an API key that is what you pay, so it shows. On a
+  subscription it would be an estimate, so it's left out. A session without
+  the 5-hour and weekly limits counts as an API key, and the cost shows from
+  its first cent.
 
 ## Privacy
 
 The script stores nothing and sends nothing. It reads four things:
 
 - The JSON Claude Code passes it. It uses the directory, model, effort,
-  agent, worktree, limits and context size, and never the transcript.
+  agent, worktree, limits, cost and context size, and never the transcript.
 - One read-only `git status`. It never takes the index lock and gives up
   after 0.5 s. A few files under `.git` are also read, to spot a rebase or
   merge and count stashes.
@@ -135,7 +139,7 @@ Edit `CONFIG` at the top of `statusline.py`.
 
 | Key | Default | Effect |
 |---|---|---|
-| `show_cwd`, `show_quota`, `show_context`, `show_model`, `show_memory`, `show_git`, `show_agent`, `show_account` | `True` | Each field |
+| `show_cwd`, `show_quota`, `show_cost`, `show_context`, `show_model`, `show_memory`, `show_git`, `show_agent`, `show_account` | `True` | Each field |
 | `icons` | `True` | Nerd Font icons. `False` gives the minimal line, and so does `STATUSLINE_ICONS=0` |
 | `colour` | `True` | Colour. Setting `NO_COLOR` also turns it off |
 | `warn_at`, `crit_at` | `60`, `85` | Percentages that turn yellow and red |
@@ -159,10 +163,11 @@ There are two ways to handle a narrow window, and one is chosen with
 Once there's no room left, both modes shed in the same order. The reset
 times go first, then the context percentage, the full path, the git symbols
 and the effort level. After that whole fields go, starting with the account,
-then agent, memory, git, model and directory. Quota and context always stay, and
-widening the window brings everything back.
+then agent, memory, git, model and directory. Quota, cost and context always
+stay, and widening the window brings everything back.
 
-At its narrowest the line is just the two quotas and context.
+At its narrowest the line is just the two quotas and context, or the cost and
+context with an API key.
 
 ![The status line at its narrowest](docs/statusline-narrow.png)
 
