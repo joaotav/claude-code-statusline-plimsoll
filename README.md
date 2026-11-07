@@ -14,7 +14,7 @@ detail, and then whole fields. Usage and context are never dropped. See details 
 
 ![The status line with Nerd Font icons](docs/statusline-icons.png)
 
-**Minimal (see [Icons or minimal](#icons-or-minimal) explains):**
+**Minimal (see [Icons or minimal](#icons-or-minimal)):**
 
 ![The same line as plain text](docs/statusline-plain.png)
 
@@ -53,14 +53,6 @@ A detached HEAD shows as `@a1b2c3d`. During a rebase, merge, cherry-pick,
 revert or bisect, the operation follows the branch in yellow, as in
 `my-project:feature|REBASE 2/5 =1`. Inside a linked worktree the name is
 still the main repository's.
-
-## Icons or minimal
-
-Each field starts with a Nerd Font icon by default. Turn `icons` off and the
-line becomes plain text with almost no labels. A token count, a GB figure, a
-branch and an email are easy to tell apart without one. The two quotas are
-the exception. Two bare percentages side by side would look the same, so
-they keep the short labels `5h` and `7d`.
 
 ## Design choices
 
@@ -126,15 +118,35 @@ The last line renders a sample so you can check it works. Then add this to
 }
 ```
 
-For the minimal line, put `STATUSLINE_ICONS=0 ` in front of the command.
-To hide the account, put `STATUSLINE_ACCOUNT=0 ` there too. That leaves the
-script untouched, so `git pull` keeps working.
-
 `refreshInterval` keeps the numbers current while you're idle. If you use
 several accounts through `CLAUDE_CONFIG_DIR`, each config folder has its own
 `settings.json`, and each one needs the block. To update, run `git pull`.
 
+To change what the line shows, see [Configuration](#configuration).
+
 ## Configuration
+
+Change the line with environment variables in the `statusLine` command, or
+by editing `CONFIG` at the top of `statusline.py`.
+
+### Environment variables
+
+Put these in front of the `statusLine` command. They leave the script
+untouched, so `git pull` keeps working.
+
+| Variable | Effect |
+|---|---|
+| `STATUSLINE_ICONS=0` | The minimal line, as `icons: False` |
+| `STATUSLINE_ACCOUNT=0` | No account email, as `show_account: False` |
+| `NO_COLOR=1` | No colour, as `colour: False` |
+
+For example, the minimal line without the account:
+
+```json
+"command": "STATUSLINE_ICONS=0 STATUSLINE_ACCOUNT=0 /home/you/claude-code-status/statusline.py"
+```
+
+### Settings in the script
 
 Edit `CONFIG` at the top of `statusline.py`.
 
@@ -151,16 +163,15 @@ Edit `CONFIG` at the top of `statusline.py`.
 `show_input_tokens`, `show_cache_split`, `show_output_tokens`,
 `show_duration` and `show_lines_changed` also exist, and are off by default.
 
-Three environment variables work without editing the file. Put them in front
-of the `statusLine` command:
+### Icons or minimal
 
-| Variable | Effect |
-|---|---|
-| `STATUSLINE_ICONS=0` | The minimal line, as `icons: False` |
-| `STATUSLINE_ACCOUNT=0` | No account email, as `show_account: False` |
-| `NO_COLOR=1` | No colour, as `colour: False` |
+Each field starts with a Nerd Font icon by default. Turn `icons` off and the
+line becomes plain text with almost no labels. A token count, a GB figure, a
+branch and an email are easy to tell apart without one. The two quotas are
+the exception. Two bare percentages side by side would look the same, so
+they keep the short labels `5h` and `7d`.
 
-## Narrow terminals
+### Narrow terminals
 
 There are two ways to handle a narrow window, and one is chosen with
 `max_lines`.
