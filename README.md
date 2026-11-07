@@ -207,7 +207,7 @@ token, which this script won't do.
 
 ## Acknowledgements
 
-Ideas, not code, were taken from these projects.
+The following projects served as inspiration for this mod:
 
 - [One Dark Triptych](https://statuslin.es/c/one-dark-triptych-071e85e2) by
   adrijshikhar, for spreading a status line over more than one line, dim
