@@ -1,6 +1,6 @@
 ![Three real status lines from the script, comfortable, getting close and critical](docs/banner.jpg)
 
-# Plimsoll - A customizable Claude Code status line
+# Plimsoll - A configurable Claude Code status line
 
 [![tests](https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml/badge.svg)](https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml)
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
