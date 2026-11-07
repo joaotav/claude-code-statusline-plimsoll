@@ -82,6 +82,9 @@ class SegmentTest(unittest.TestCase):
         self.assertIn(f"{GREEN}4GB{RESET}/16GB", self.render((4 * GIB, 16 * GIB), colour=True)[0])
         self.assertIn(f"{RED}14.4GB{RESET}/16GB", self.render((int(14.4 * GIB), 16 * GIB), colour=True)[0])
 
+    def test_critical_is_marked_without_colour(self):
+        self.assertEqual(self.render((int(14.4 * GIB), 16 * GIB)), ["14.4GB/16GB ⚠"])
+
 
 class RealSystemTest(unittest.TestCase):
     @unittest.skipUnless(sys.platform.startswith("linux") or sys.platform == "darwin", "Linux and macOS only")

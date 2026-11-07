@@ -147,6 +147,11 @@ def colour_for(pct: float) -> str:
     return GREEN
 
 
+def alert(pct: float) -> str:
+    """' ⚠' past crit_at, so a critical value reads without colour too."""
+    return paint(" ⚠", RED) if pct >= CONFIG["crit_at"] else ""
+
+
 def fmt_tokens(n) -> str:
     """16700 -> '16.7k', 200000 -> '200k', 1000000 -> '1M'."""
     try:
@@ -322,7 +327,7 @@ def quota_segment(window: dict | None, key: str) -> tuple[int, list[str]] | None
     except (TypeError, ValueError):
         return None
 
-    compact = labelled(key, paint(fmt_pct(pct), colour_for(pct)))
+    compact = labelled(key, paint(fmt_pct(pct), colour_for(pct)) + alert(pct))
     reset = fmt_reset(window.get("resets_at"))
     # The percentage matters more than the reset time, so on a narrow terminal
     # we shed the reset rather than the whole window.
@@ -380,8 +385,9 @@ def context_segments(data: dict) -> list[tuple[int, list[str]]]:
         variants = [full]
         if pct is not None:
             shown = paint(f"{half_up(pct)}%", colour_for(pct))
-            # On a narrow terminal keep the raw counts, shed the percentage.
-            variants = at_stage(2, f"{full} {shown}", full)
+            # On a narrow terminal keep the raw counts, shed the percentage,
+            # but not the warning.
+            variants = at_stage(2, f"{full} {shown}{alert(pct)}", full + alert(pct))
         segs.append((0, variants))
 
     if CONFIG["show_input_tokens"] and usage.get("input_tokens") is not None:
@@ -580,8 +586,9 @@ def memory_segment() -> tuple[int, list[str]] | None:
         return None
     used, total = reading
     # Coloured by the share in use, like the usage limits.
-    shown = paint(fmt_size(used), colour_for(used / total * 100))
-    return (4, [labelled("memory", f"{shown}/{fmt_size(total)}")])
+    pct = used / total * 100
+    shown = paint(fmt_size(used), colour_for(pct))
+    return (4, [labelled("memory", f"{shown}/{fmt_size(total)}{alert(pct)}")])
 
 
 # --------------------------------------------------------------------------

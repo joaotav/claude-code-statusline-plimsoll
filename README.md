@@ -31,7 +31,8 @@ detail, and then whole fields. Usage and context never go. More in
 | Git | `my-project:main !2 +1 ?1 ⇡2` | Repository, branch and changes |
 | Account | `me@example.com` | Which account is logged in |
 
-Percentages and memory turn yellow at 60% and red at 85%.
+Percentages and memory turn yellow at 60% and red at 85%. From 85% they
+also get a `⚠`, so the warning shows without colour too.
 
 The git symbols follow Starship and Powerlevel10k, and each one hides when
 its count is zero.

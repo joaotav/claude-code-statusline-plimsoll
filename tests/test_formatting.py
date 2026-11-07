@@ -59,6 +59,27 @@ class ContextFieldTest(unittest.TestCase):
         self.assertEqual(variants[0], "16k/200k 8%")
         self.assertEqual(variants[-1], "16k/200k")
 
+    def test_critical_keeps_its_warning_when_narrow(self):
+        data = {"context_window": {"context_window_size": 200000, "total_input_tokens": 190000, "used_percentage": 95}}
+        with environment():
+            variants = statusline.context_segments(data)[0][1]
+        self.assertEqual(variants[0], "190k/200k 95% ⚠")
+        self.assertEqual(variants[-1], "190k/200k ⚠")
+
+
+class AlertTest(unittest.TestCase):
+    def test_marks_only_from_crit_at(self):
+        with environment():
+            self.assertEqual(statusline.alert(84.9), "")
+            self.assertEqual(statusline.alert(85), " ⚠")
+
+    def test_quota_past_crit_at_is_marked(self):
+        with environment():
+            calm = statusline.quota_segment({"used_percentage": 60}, "five_hour")[1]
+            critical = statusline.quota_segment({"used_percentage": 94}, "five_hour")[1]
+        self.assertEqual(calm, ["5h 60%"])
+        self.assertEqual(critical, ["5h 94% ⚠"])
+
 
 class FmtPctTest(unittest.TestCase):
     def test_drops_a_decimal_that_adds_nothing(self):
