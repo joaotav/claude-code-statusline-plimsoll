@@ -37,6 +37,8 @@ CONFIG = {
     "show_account": True,
     # System RAM in use out of the total. Linux and macOS.
     "show_memory": True,
+    # The --agent name and the worktree, shown only when there is one.
+    "show_agent": True,
     # Per-call token detail — off by default, one line has no room for it.
     "show_input_tokens": False,
     "show_cache_split": False,
@@ -73,12 +75,17 @@ ICONS = {
     "git": "\ue0a0",  # nf-pl-branch
     "account": "\uf007",  # nf-fa-user
     "memory": "\uefc5",  # nf-fa-memory
+    "agent": "\uf21b",  # nf-fa-user_secret
+    "worktree": "\uf126",  # nf-fa-code_fork
 }
 
 # What `icons: False` shows instead; a missing key means no label at all.
 TEXT_LABELS = {
     "five_hour": "5h",
     "seven_day": "7d",
+    # A bare name would read as a directory or branch.
+    "agent": "agent",
+    "worktree": "worktree",
 }
 
 GREEN, YELLOW, RED, BLUE, MAGENTA, CYAN, DIM, RESET = (
@@ -509,6 +516,19 @@ def git_segment(data: dict) -> tuple[int, list[str]] | None:
     return (3, at_stage(4, f"{base} {symbols}", base) if symbols else [base])
 
 
+def agent_segment(data: dict) -> tuple[int, list[str]] | None:
+    """The --agent name and the worktree the session runs in: Claude's own
+    worktree, else any linked git worktree. None for a plain session."""
+    parts = []
+    agent = dig(data, "agent", "name")
+    if isinstance(agent, str) and agent:
+        parts.append(labelled("agent", printable(agent)))
+    tree = dig(data, "worktree", "name") or dig(data, "workspace", "git_worktree")
+    if isinstance(tree, str) and tree:
+        parts.append(labelled("worktree", printable(tree)))
+    return (4, [" ".join(parts)]) if parts else None
+
+
 def account_email() -> str | None:
     """The logged-in account's email, or None (API key, logged out, no file).
 
@@ -612,7 +632,7 @@ def main() -> None:
         data = {}
 
     # Priority decides what drops when even the sparsest variants overflow:
-    # highest number first, so account, then memory, git, model and cwd;
+    # highest number first, so account, agent, memory, git, model and cwd;
     # quota and context (priority 0) never drop.
     segments: list[tuple[int, list[str]]] = []
     if CONFIG["show_cwd"]:
@@ -627,6 +647,8 @@ def main() -> None:
         segments += filter(None, [memory_segment()])
     if CONFIG["show_git"]:
         segments += filter(None, [git_segment(data)])
+    if CONFIG["show_agent"]:
+        segments += filter(None, [agent_segment(data)])
     if CONFIG["show_account"]:
         segments += filter(None, [account_segment()])
 

@@ -115,6 +115,18 @@ def all_payloads(now: float, cwd: str = str(ROOT)) -> dict[str, dict]:
     f["exceeds_200k_tokens"] = True
     p["maxed"] = f
 
+    # Run with --agent inside a Claude worktree.
+    f = base(now, cwd)
+    f["agent"] = {"name": "security-reviewer"}
+    f["worktree"] = {
+        "name": "my-feature",
+        "path": f"{cwd}/.claude/worktrees/my-feature",
+        "branch": "worktree-my-feature",
+        "original_cwd": cwd,
+        "original_branch": "main",
+    }
+    p["agent-worktree"] = f
+
     # Reset further than a week out — exercises the date-prefixed branch.
     f = base(now, cwd)
     f["rate_limits"]["seven_day"]["resets_at"] = int(now + 10 * DAY)

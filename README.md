@@ -29,6 +29,7 @@ detail, and then whole fields. Usage and context never go. More in
 | Model | `Opus 5.5 (high)` | Model and effort level |
 | Memory | `7.6GB/14.8GB` | System RAM in use, as `free -h` counts it |
 | Git | `my-project:main !2 +1 ?1 ⇡2` | Repository, branch and changes |
+| Agent | `agent reviewer worktree my-feature` | The `--agent` name and the worktree, only when there is one |
 | Account | `me@example.com` | Which account is logged in |
 
 Percentages and memory turn yellow at 60% and red at 85%. From 85% they
@@ -76,7 +77,7 @@ they keep the short labels `5h` and `7d`.
 The script stores nothing and sends nothing. It reads four things:
 
 - The JSON Claude Code passes it. It uses the directory, model, effort,
-  limits and context size, and never the transcript.
+  agent, worktree, limits and context size, and never the transcript.
 - One read-only `git status`. It never takes the index lock and gives up
   after 0.5 s.
 - `.claude.json`, and only the account email in it. The login token is kept
@@ -128,7 +129,7 @@ Edit `CONFIG` at the top of `statusline.py`.
 
 | Key | Default | Effect |
 |---|---|---|
-| `show_cwd`, `show_quota`, `show_context`, `show_model`, `show_memory`, `show_git`, `show_account` | `True` | Each field |
+| `show_cwd`, `show_quota`, `show_context`, `show_model`, `show_memory`, `show_git`, `show_agent`, `show_account` | `True` | Each field |
 | `icons` | `True` | Nerd Font icons. `False` gives the minimal line, and so does `STATUSLINE_ICONS=0` |
 | `colour` | `True` | Colour. Setting `NO_COLOR` also turns it off |
 | `warn_at`, `crit_at` | `60`, `85` | Percentages that turn yellow and red |
@@ -152,7 +153,7 @@ There are two ways to handle a narrow window, and one is chosen with
 Once there's no room left, both modes shed in the same order. The reset
 times go first, then the context percentage, the full path, the git symbols
 and the effort level. After that whole fields go, starting with the account,
-then memory, git, model and directory. Quota and context always stay, and
+then agent, memory, git, model and directory. Quota and context always stay, and
 widening the window brings everything back.
 
 At its narrowest the line is just the two quotas and context.

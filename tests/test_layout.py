@@ -157,10 +157,47 @@ class WrapTest(unittest.TestCase):
                 self.assertEqual(shown, [f for f in order if f in shown])
 
 
+class AgentTest(unittest.TestCase):
+    def test_plain_session_has_no_agent_field(self):
+        with environment():
+            self.assertIsNone(statusline.agent_segment(payload()))
+
+    def test_agent_and_worktree(self):
+        data = payload(agent={"name": "reviewer"}, worktree={"name": "my-feature"})
+        with environment():
+            self.assertEqual(statusline.agent_segment(data), (4, ["agent reviewer worktree my-feature"]))
+
+    def test_any_linked_git_worktree(self):
+        data = payload()
+        data["workspace"]["git_worktree"] = "hotfix"
+        with environment():
+            self.assertEqual(statusline.agent_segment(data)[1], ["worktree hotfix"])
+
+    def test_claude_worktree_wins_over_git_worktree(self):
+        data = payload(worktree={"name": "my-feature"})
+        data["workspace"]["git_worktree"] = "hotfix"
+        with environment():
+            self.assertEqual(statusline.agent_segment(data)[1], ["worktree my-feature"])
+
+    def test_control_characters_are_not_printed(self):
+        with environment():
+            self.assertEqual(statusline.agent_segment(payload(agent={"name": "re\033]0;x\007v"}))[1], ["agent re]0;xv"])
+
+    def test_sits_after_git_and_drops_before_memory(self):
+        data = payload(agent={"name": "reviewer"})
+        with environment(git=GIT, memory=MEMORY):
+            wide = run_main(data)
+            # The widest line that has had to drop the agent.
+            narrow = next(line for w in range(len(wide), 0, -1) if "reviewer" not in (line := run_main(data, columns=w)))
+        self.assertTrue(wide.endswith("repo:main !1 ?1 ⇡2 • agent reviewer"))
+        self.assertIn("7.6GB/14.8GB", narrow)
+
+
 class LabelsAndColourTest(unittest.TestCase):
     def test_icons_replace_text_labels(self):
+        data = payload(agent={"name": "reviewer"}, worktree={"name": "my-feature"})
         with environment(icons=True, git=GIT, account=ACCOUNT, memory=MEMORY):
-            line = run_main(payload())
+            line = run_main(data)
         for key, icon in statusline.ICONS.items():
             with self.subTest(key):
                 self.assertIn(icon, line)
