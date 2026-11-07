@@ -210,16 +210,6 @@ a rebase and a merge stopped on a conflict. A few read the machine's real
 memory figures. CI runs
 them on Linux and macOS with Python 3.11 and 3.14.
 
-## Not included
-
-Per-model weekly limits and the extra-usage balance. Claude Code doesn't
-pass them to status lines, and fetching them would mean reading the login
-token, which this script won't do.
-
-Subagents running in the background. Status lines get only the `--agent`
-name, and the rest is in the session transcript, which this script never
-reads.
-
 ## Acknowledgements
 
 The following projects served as inspiration for this mod:
