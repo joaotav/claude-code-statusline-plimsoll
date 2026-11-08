@@ -12,19 +12,23 @@ import argparse
 import re
 import subprocess
 import sys
+from contextlib import ExitStack
 from pathlib import Path
+from unittest import mock
 
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+import statusline  # noqa: E402
 from tests.payloads import base  # noqa: E402
-from tests.support import HOME, NOW, changed, environment, porcelain, run_main, untracked  # noqa: E402
+from tests.support import HOME, NOW, changed, environment, porcelain, run_main, unmerged, untracked  # noqa: E402
 
 OUT = ROOT / "docs"
 SCALE = 2  # drawn at twice the size, for high-density screens
 FONT_SIZE, PAD = 14 * SCALE, 12 * SCALE
+RADIUS = 10 * SCALE  # rounded corners, transparent outside
 
 # One Dark, a common terminal theme.
 BG, FG = "#282c34", "#abb2bf"
@@ -38,23 +42,52 @@ SGR = {
     "2": "#5c6370",
 }
 
-# (file, icons, columns): full width, with icons and without.
+# (file, scenario, icons, columns, max_lines).
 SHOTS = [
-    ("statusline-icons.png", True, 300),
-    ("statusline-plain.png", False, 300),
+    ("statusline-icons.png", "calm", True, 300, 1),
+    ("statusline-plain.png", "calm", False, 300, 1),
+    ("statusline-critical.png", "critical", True, 300, 1),
+    ("statusline-api-key.png", "api-key", True, 300, 1),
+    ("statusline-wrapped.png", "calm", True, 90, 2),
 ]
 
 
-def render(icons: bool, columns: int) -> str:
+def render(scenario: str, icons: bool, columns: int, max_lines: int) -> str:
     data = base(NOW.timestamp(), cwd=f"{HOME}/code/work/my-project")
-    with environment(
+    git = porcelain(changed(".M"), untracked(), ab="+2 -0")
+    memory = (int(7.6 * 2**30), int(14.8 * 2**30))
+    patches = {}  # statusline functions to stub, applied over environment()'s
+    if scenario == "critical":
+        # Near every limit, mid-rebase with a conflict and a stash.
+        data["rate_limits"]["five_hour"]["used_percentage"] = 94.0
+        data["rate_limits"]["seven_day"]["used_percentage"] = 72.5
+        data["context_window"].update(context_window_size=1_000_000, total_input_tokens=912_000, used_percentage=91)
+        git = porcelain(unmerged(), changed("M."), head="(detached)")
+        memory = (int(13.1 * 2**30), int(14.8 * 2**30))
+        patches = {
+            "git_dirs": (Path(), Path(), Path()),
+            "git_operation": ("REBASE 2/5", "feature"),
+            "stash_count": 1,
+        }
+    elif scenario == "api-key":
+        # No subscription limits, so the cost shows; run with --agent in a worktree.
+        del data["rate_limits"]
+        data["cost"]["total_cost_usd"] = 4.87
+        data["model"] = {"id": "claude-sonnet-5-5", "display_name": "Sonnet 5.5"}
+        data["agent"] = {"name": "reviewer"}
+        data["worktree"] = {"name": "my-feature"}
+        git = porcelain(changed("A."), changed(".M"), head="worktree-my-feature")
+    with ExitStack() as stack, environment(
         icons=icons,
         colour=True,
-        git=porcelain(changed(".M"), untracked(), ab="+2 -0"),
+        git=git,
         repo="my-project",
         account="me@example.com",
-        memory=(int(7.6 * 2**30), int(14.8 * 2**30)),
+        memory=memory,
+        max_lines=max_lines,
     ):
+        for name, value in patches.items():
+            stack.enter_context(mock.patch.object(statusline, name, return_value=value))
         return run_main(data, columns=columns)
 
 
@@ -91,16 +124,24 @@ class Fonts:
         return self.fallbacks[ch]
 
 
-def draw(line: str, fonts: Fonts, path: Path) -> None:
-    pieces = [(ch, colour, fonts.for_char(ch)) for text, colour in runs(line) for ch in text]
+def draw(text: str, fonts: Fonts, path: Path) -> None:
+    lines = [
+        [(ch, colour, fonts.for_char(ch)) for piece, colour in runs(line) for ch in piece] for line in text.split("\n")
+    ]
     height = int(FONT_SIZE * 1.6)
-    width = sum(font.getlength(ch) for ch, _, font in pieces)
-    img = Image.new("RGB", (int(width) + 2 * PAD, height + 2 * PAD), BG)
+    width = max(sum(font.getlength(ch) for ch, _, font in pieces) for pieces in lines)
+    size = (int(width) + 2 * PAD, height * len(lines) + 2 * PAD)
+    img = Image.new("RGBA", size, BG)
     pen = ImageDraw.Draw(img)
-    x = PAD
-    for ch, colour, font in pieces:
-        pen.text((x, PAD + height / 2), ch, font=font, fill=colour, anchor="lm")
-        x += font.getlength(ch)
+    for row, pieces in enumerate(lines):
+        x, y = PAD, PAD + height * row + height / 2
+        for ch, colour, font in pieces:
+            pen.text((x, y), ch, font=font, fill=colour, anchor="lm")
+            x += font.getlength(ch)
+    # The corner mask is drawn four times larger and shrunk, for smooth edges.
+    mask = Image.new("L", (size[0] * 4, size[1] * 4), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, mask.width - 1, mask.height - 1), RADIUS * 4, fill=255)
+    img.putalpha(mask.resize(size, Image.LANCZOS))
     img.save(path, optimize=True)
 
 
@@ -120,8 +161,8 @@ def main() -> None:
     fonts = Fonts(font_path)
 
     OUT.mkdir(exist_ok=True)
-    for name, icons, columns in SHOTS:
-        draw(render(icons, columns), fonts, OUT / name)
+    for name, *shot in SHOTS:
+        draw(render(*shot), fonts, OUT / name)
         print(f"wrote {(OUT / name).relative_to(ROOT)}")
 
 
