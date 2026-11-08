@@ -8,8 +8,10 @@
 ![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A status line for Claude Code. It shows how close you are to your usage and
-context limits, along with the model, git state and more.
+A status line for Claude Code. It shows how close you are to your 5-hour,
+weekly and context limits, along with the directory, model and effort level,
+system memory, git state, agent and worktree, and logged-in account. With an
+API key it shows the session's cost instead of the limits.
 
 It's named after the Plimsoll line, the mark painted on a ship's hull that
 shows how heavily it can safely be loaded. Below the mark is safe, and past
