@@ -18,8 +18,7 @@ shows how heavily it can safely be loaded. Below the mark is safe, and past
 it the ship is overloaded. This line does the same for Claude Code.
 
 The line fits the terminal: on a narrow window it wraps, then sheds detail,
-and usage and context are never dropped. See
-[Narrow terminals](#narrow-terminals).
+and usage and context are never dropped.
 
 ## Examples
 
