@@ -209,7 +209,7 @@ Drop at shrinking widths:
 python3 -m unittest discover -s tests -t .   # tests, Python 3.11+
 ./scripts/run-fixtures.sh                    # render every sample input
 python3 scripts/make-screenshots.py          # README images, needs Pillow and a Nerd Font
-python3 scripts/make-banner.py               # the banner, also needs Inter
+python3 scripts/make-banner.py               # the banner, also needs Space Grotesk and Inter
 ```
 
 The tests freeze the clock and stub git. Some run real git and read real
