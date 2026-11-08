@@ -44,8 +44,16 @@ and usage and context are never dropped. See
 | Agent | `agent reviewer worktree my-feature` | The `--agent` name and the worktree, only when there is one |
 | Account | `me@example.com` | Which account is logged in |
 
+**With an API key, run with `--agent` in a worktree:**
+
+![The status line showing cost, agent and worktree](docs/statusline-api-key.png)
+
 Percentages and memory turn yellow at 60% and red at 85%. From 85% they
 also get a `⚠`, so the warning shows without colour too.
+
+**Near the limits, mid-rebase:**
+
+![The status line with red percentages, warnings and a rebase in progress](docs/statusline-critical.png)
 
 The git symbols follow the same format as Starship and Powerlevel10k, and remain hidden when their count is zero.
 
@@ -183,12 +191,9 @@ and the effort level. After that whole fields go, starting with the account,
 then agent, memory, git, model and directory. Quota, cost and context always
 stay, and widening the window brings everything back.
 
-Wrap at 80 columns:
+Wrap at 90 columns:
 
-```
-~/code/my-project • 5h 23.5% [14:00] • 7d 41.2% [Sun 12:00] • 16k/200k 8%
-Opus 5.5 (high) • 7.8GB/14.8GB • my-project:main !1 • me@example.com
-```
+![The status line wrapped onto two lines](docs/statusline-wrapped.png)
 
 Drop at shrinking widths:
 
