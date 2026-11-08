@@ -21,6 +21,8 @@ The line fits the terminal: on a narrow window it wraps, then sheds detail,
 and usage and context are never dropped. See
 [Narrow terminals](#narrow-terminals).
 
+## Examples
+
 **With icons (default):**
 
 ![The status line with Nerd Font icons](docs/statusline-icons.png)
@@ -28,6 +30,18 @@ and usage and context are never dropped. See
 **Minimal (see [Icons or minimal](#icons-or-minimal)):**
 
 ![The same line as plain text](docs/statusline-plain.png)
+
+**Near the limits, mid-rebase (see [Fields](#fields)):**
+
+![The status line with red percentages, warnings and a rebase in progress](docs/statusline-critical.png)
+
+**With an API key, run with `--agent` in a worktree (see [Fields](#fields)):**
+
+![The status line showing cost, agent and worktree](docs/statusline-api-key.png)
+
+**Wrapped at 90 columns (see [Narrow terminals](#narrow-terminals)):**
+
+![The status line wrapped onto two lines](docs/statusline-wrapped.png)
 
 ## Fields
 
@@ -44,16 +58,11 @@ and usage and context are never dropped. See
 | Agent | `agent reviewer worktree my-feature` | The `--agent` name and the worktree, only when there is one |
 | Account | `me@example.com` | Which account is logged in |
 
-**With an API key, run with `--agent` in a worktree:**
-
-![The status line showing cost, agent and worktree](docs/statusline-api-key.png)
+The cost, agent and worktree show in the [API key example](#examples).
 
 Percentages and memory turn yellow at 60% and red at 85%. From 85% they
-also get a `⚠`, so the warning shows without colour too.
-
-**Near the limits, mid-rebase:**
-
-![The status line with red percentages, warnings and a rebase in progress](docs/statusline-critical.png)
+also get a `⚠`, so the warning shows without colour too, as in the
+[near the limits example](#examples).
 
 The git symbols follow the same format as Starship and Powerlevel10k, and remain hidden when their count is zero.
 
@@ -70,7 +79,8 @@ The git symbols follow the same format as Starship and Powerlevel10k, and remain
 
 A detached HEAD shows as `@a1b2c3d`. During a rebase, merge, cherry-pick,
 revert or bisect, the operation follows the branch in yellow, as in
-`my-project:feature|REBASE 2/5 =1`. Inside a linked worktree the name is
+`my-project:feature|REBASE 2/5 =1` and the
+[near the limits example](#examples). Inside a linked worktree the name is
 still the main repository's.
 
 ## Design choices
@@ -172,8 +182,9 @@ Edit `CONFIG` at the top of `statusline.py`.
 
 ### Icons or minimal
 
-Turn icons off for plain text with almost no labels. The two quotas keep
-`5h` and `7d`, since two bare percentages would look the same.
+Turn icons off for plain text with almost no labels, as in the
+[minimal example](#examples). The two quotas keep `5h` and `7d`, since two
+bare percentages would look the same.
 
 ### Narrow terminals
 
@@ -191,11 +202,8 @@ and the effort level. After that whole fields go, starting with the account,
 then agent, memory, git, model and directory. Quota, cost and context always
 stay, and widening the window brings everything back.
 
-Wrap at 90 columns:
-
-![The status line wrapped onto two lines](docs/statusline-wrapped.png)
-
-Drop at shrinking widths:
+The wrap at 90 columns is in the [examples](#examples). The drop, at
+shrinking widths:
 
 ```
 110 cols  my-project • 5h 23.5% • 7d 41.2% • 16k/200k • Opus 5.5 • 7.8GB/14.8GB • my-project:main • me@example.com
