@@ -125,8 +125,21 @@ cd ~/claude-code-statusline-plimsoll
 python3 scripts/make-fixtures.py > /dev/null && ./statusline.py < fixtures/full.json
 ```
 
-The last line renders a sample so you can check it works. Then add this to
-`~/.claude/settings.json`, with the full path to the script:
+The last line renders a sample so you can check it works. Then point Claude
+Code at the script:
+
+```sh
+python3 scripts/install.py
+```
+
+This adds the `statusLine` block to `~/.claude/settings.json` and leaves your
+other settings alone. It backs the file up first, and asks before replacing a
+status line that's already there. If you use several accounts through
+`CLAUDE_CONFIG_DIR`, each config folder has its own `settings.json`, so run
+it once for each, as in
+`CLAUDE_CONFIG_DIR=~/.claude-work python3 scripts/install.py`.
+
+To add the block by hand instead, use the full path to the script:
 
 ```json
 {
@@ -139,9 +152,8 @@ The last line renders a sample so you can check it works. Then add this to
 }
 ```
 
-`refreshInterval` keeps the numbers current while you're idle. If you use
-several accounts through `CLAUDE_CONFIG_DIR`, each config folder has its own
-`settings.json`, and each one needs the block. To update, run `git pull`.
+`refreshInterval` keeps the numbers current while you're idle. To update,
+run `git pull`.
 
 ## Configuration
 
