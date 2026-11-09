@@ -121,6 +121,11 @@ def all_payloads(now: float, cwd: str = str(ROOT)) -> dict[str, dict]:
     f["fast_mode"] = True
     p["fast-mode"] = f
 
+    # An output style other than the default.
+    f = base(now, cwd)
+    f["output_style"]["name"] = "Explanatory"
+    p["output-style"] = f
+
     # Run with --agent inside a Claude worktree.
     f = base(now, cwd)
     f["agent"] = {"name": "security-reviewer"}

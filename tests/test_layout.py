@@ -277,9 +277,52 @@ class FastModeTest(unittest.TestCase):
                 self.assertEqual("(high)" in line, "fast" in line)
 
 
+class OutputStyleTest(unittest.TestCase):
+    def test_default_is_hidden(self):
+        with environment():
+            self.assertIsNone(statusline.output_style_segment(payload()))
+
+    def test_missing_or_invalid_is_hidden(self):
+        absent = payload()
+        del absent["output_style"]
+        for data in (absent, payload(output_style={}), payload(output_style={"name": ""}), payload(output_style="x")):
+            with self.subTest(data.get("output_style")), environment():
+                self.assertIsNone(statusline.output_style_segment(data))
+
+    def test_another_style_sits_after_the_model(self):
+        with environment(git=GIT):
+            line = run_main(payload(output_style={"name": "Explanatory"}))
+        self.assertIn("• Opus 5.5 (high) • style Explanatory • repo:main", line)
+
+    def test_icon(self):
+        with environment(icons=True):
+            seg = statusline.output_style_segment(payload(output_style={"name": "Learning"}))
+        self.assertEqual(seg, (5, [f"{statusline.ICONS['style']} Learning"]))
+
+    def test_control_characters_are_not_printed(self):
+        with environment():
+            seg = statusline.output_style_segment(payload(output_style={"name": "Ex\033]0;x\007p"}))
+        self.assertEqual(seg[1], ["style Ex]0;xp"])
+
+    def test_drops_right_after_the_account(self):
+        data = payload(output_style={"name": "Explanatory"}, agent={"name": "reviewer"})
+        with environment(git=GIT, account=ACCOUNT, memory=MEMORY):
+            lines = [run_main(data, columns=w) for w in range(250, 19, -1)]
+        # The widest line that has had to drop the style.
+        narrow = next(line for line in lines if "Explanatory" not in line)
+        self.assertNotIn(ACCOUNT, narrow)
+        self.assertIn("agent reviewer", narrow)
+
+    def test_can_be_turned_off(self):
+        with environment(), mock.patch.dict(statusline.CONFIG, {"show_output_style": False}):
+            self.assertNotIn("Explanatory", run_main(payload(output_style={"name": "Explanatory"})))
+
+
 class LabelsAndColourTest(unittest.TestCase):
     def test_icons_replace_text_labels(self):
-        data = payload(agent={"name": "reviewer"}, worktree={"name": "my-feature"}, fast_mode=True)
+        data = payload(
+            agent={"name": "reviewer"}, worktree={"name": "my-feature"}, fast_mode=True, output_style={"name": "Explanatory"}
+        )
         with environment(icons=True, git=GIT, account=ACCOUNT, memory=MEMORY):
             line = run_main(data)
         for key, icon in statusline.ICONS.items():
