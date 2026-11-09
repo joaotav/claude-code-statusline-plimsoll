@@ -49,6 +49,7 @@ def base(now: float, cwd: str = str(ROOT)) -> dict:
             },
         },
         "exceeds_200k_tokens": False,
+        "fast_mode": False,
         "rate_limits": {
             "five_hour": {"used_percentage": 23.5, "resets_at": int(now + 2 * HOUR)},
             "seven_day": {"used_percentage": 41.2, "resets_at": int(now + 4 * DAY)},
@@ -114,6 +115,11 @@ def all_payloads(now: float, cwd: str = str(ROOT)) -> dict[str, dict]:
     }
     f["exceeds_200k_tokens"] = True
     p["maxed"] = f
+
+    # Fast mode: a badge after the effort level.
+    f = base(now, cwd)
+    f["fast_mode"] = True
+    p["fast-mode"] = f
 
     # Run with --agent inside a Claude worktree.
     f = base(now, cwd)

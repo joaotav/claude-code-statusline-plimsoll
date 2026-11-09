@@ -83,6 +83,7 @@ ICONS = {
     "memory": "\uefc5",  # nf-fa-memory
     "agent": "\uf21b",  # nf-fa-user_secret
     "worktree": "\uf126",  # nf-fa-code_fork
+    "fast": "\uf0e7",  # nf-fa-bolt
 }
 
 # What `icons: False` shows instead; a missing key means no label at all.
@@ -92,6 +93,7 @@ TEXT_LABELS = {
     # A bare name would read as a directory or branch.
     "agent": "agent",
     "worktree": "worktree",
+    "fast": "fast",
 }
 
 GREEN, YELLOW, RED, BLUE, MAGENTA, CYAN, DIM, RESET = (
@@ -452,11 +454,15 @@ def model_segment(data: dict) -> tuple[int, list[str]] | None:
     if not isinstance(name, str) or not name:
         return None
     short = labelled("model", name)
+    rich = short
     # Absent before the first turn and on models without effort support.
     effort = dig(data, "effort", "level")
     if isinstance(effort, str) and effort:
-        return (2, at_stage(5, f"{short} ({effort})", short))
-    return (2, [short])
+        rich += f" ({effort})"
+    # Fast mode spends the usage limits sooner. Sheds with the effort level.
+    if data.get("fast_mode") is True:
+        rich += " " + (ICONS["fast"] if use_icons() else TEXT_LABELS["fast"])
+    return (2, at_stage(5, rich, short) if rich != short else [short])
 
 
 def git_status(path: str) -> str | None:

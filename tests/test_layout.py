@@ -242,9 +242,44 @@ class AgentTest(unittest.TestCase):
         self.assertIn("7.6GB/14.8GB", narrow)
 
 
+class FastModeTest(unittest.TestCase):
+    def test_badge_follows_the_effort_level(self):
+        with environment():
+            self.assertEqual(statusline.model_segment(payload(fast_mode=True))[1][0], "Opus 5.5 (high) fast")
+
+    def test_icon(self):
+        icons = statusline.ICONS
+        with environment(icons=True):
+            line = statusline.model_segment(payload(fast_mode=True))[1][0]
+        self.assertEqual(line, f"{icons['model']} Opus 5.5 (high) {icons['fast']}")
+
+    def test_without_an_effort_level(self):
+        data = payload(fast_mode=True)
+        del data["effort"]
+        with environment():
+            variants = statusline.model_segment(data)[1]
+        self.assertEqual((variants[0], variants[-1]), ("Opus 5.5 fast", "Opus 5.5"))
+
+    def test_off_absent_or_not_a_boolean_shows_nothing(self):
+        absent = payload()
+        del absent["fast_mode"]
+        for data in (payload(), absent, payload(fast_mode="true")):
+            with self.subTest(data.get("fast_mode", "absent")), environment():
+                self.assertNotIn("fast", run_main(data))
+
+    def test_sheds_together_with_the_effort_level(self):
+        data = payload(fast_mode=True)
+        with environment(git=GIT, memory=MEMORY):
+            lines = [run_main(data, columns=w) for w in range(200, 19, -1)]
+        self.assertIn("Opus 5.5 (high) fast", lines[0])
+        for line in lines:
+            with self.subTest(line):
+                self.assertEqual("(high)" in line, "fast" in line)
+
+
 class LabelsAndColourTest(unittest.TestCase):
     def test_icons_replace_text_labels(self):
-        data = payload(agent={"name": "reviewer"}, worktree={"name": "my-feature"})
+        data = payload(agent={"name": "reviewer"}, worktree={"name": "my-feature"}, fast_mode=True)
         with environment(icons=True, git=GIT, account=ACCOUNT, memory=MEMORY):
             line = run_main(data)
         for key, icon in statusline.ICONS.items():
