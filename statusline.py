@@ -35,6 +35,8 @@ CONFIG = {
     "show_cost": True,
     "show_context": True,
     "show_model": True,
+    # The output style, unless it's the default one.
+    "show_output_style": True,
     "show_git": True,
     # The logged-in account's email, to tell accounts apart. Reads that one
     # field from the active config dir's .claude.json. STATUSLINE_ACCOUNT=0
@@ -84,6 +86,7 @@ ICONS = {
     "agent": "\uf21b",  # nf-fa-user_secret
     "worktree": "\uf126",  # nf-fa-code_fork
     "fast": "\uf0e7",  # nf-fa-bolt
+    "style": "\uf1fc",  # nf-fa-paint_brush
 }
 
 # What `icons: False` shows instead; a missing key means no label at all.
@@ -94,6 +97,7 @@ TEXT_LABELS = {
     "agent": "agent",
     "worktree": "worktree",
     "fast": "fast",
+    "style": "style",
 }
 
 GREEN, YELLOW, RED, BLUE, MAGENTA, CYAN, DIM, RESET = (
@@ -465,6 +469,16 @@ def model_segment(data: dict) -> tuple[int, list[str]] | None:
     return (2, at_stage(5, rich, short) if rich != short else [short])
 
 
+def output_style_segment(data: dict) -> tuple[int, list[str]] | None:
+    """The output style, hidden while it's the default: every reply reads
+    differently under another one, and it's easy to forget it's on."""
+    name = dig(data, "output_style", "name")
+    if not isinstance(name, str) or not name or name == "default":
+        return None
+    # Drops early when narrow, right after the account.
+    return (5, [labelled("style", printable(name))])
+
+
 def git_status(path: str) -> str | None:
     """`git status` porcelain v2 output, or None outside a repo or on any failure."""
     try:
@@ -746,7 +760,8 @@ def main() -> None:
         data = {}
 
     # Priority decides what drops when even the sparsest variants overflow:
-    # highest number first, so account, agent, memory, git, model and cwd;
+    # highest number first, so account, output style, agent, memory, git,
+    # model and cwd;
     # quota, cost and context (priority 0) never drop.
     segments: list[tuple[int, list[str]]] = []
     if CONFIG["show_cwd"]:
@@ -759,6 +774,8 @@ def main() -> None:
         segments += context_segments(data)
     if CONFIG["show_model"]:
         segments += filter(None, [model_segment(data)])
+    if CONFIG["show_output_style"]:
+        segments += filter(None, [output_style_segment(data)])
     if CONFIG["show_memory"]:
         segments += filter(None, [memory_segment()])
     if CONFIG["show_git"]:
