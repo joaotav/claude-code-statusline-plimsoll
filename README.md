@@ -9,9 +9,9 @@
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A status line for Claude Code. It shows how close you are to your 5-hour,
-weekly and context limits, along with the directory, model and effort level,
-system memory, git state, agent and worktree, and logged-in account. With an
-API key it shows the session's cost instead of the limits.
+weekly and context limits, along with the directory, model, effort level,
+fast mode, system memory, git state, agent and worktree, and logged-in
+account. With an API key it shows the session's cost instead of the limits.
 
 It's named after the Plimsoll line, the mark painted on a ship's hull that
 shows how heavily it can safely be loaded. Below the mark is safe, and past
@@ -51,7 +51,7 @@ and usage and context are never dropped.
 | Weekly limit | `7d 41.2% [Thu 14:00]` | Share used, and when it resets |
 | Cost | `$1.23` | What the session has cost, with an API key only |
 | Context | `477k/1M 48%` | How full the context window is |
-| Model | `Opus 5.5 (high)` | Model and effort level |
+| Model | `Opus 5.5 (high) fast` | Model and effort level, and `fast` (a bolt with icons) in fast mode |
 | Memory | `7.6GB/14.8GB` | System RAM in use, as `free -h` counts it |
 | Git | `my-project:main !2 +1 ?1 ⇡2` | Repository, branch and changes |
 | Agent | `agent reviewer worktree my-feature` | The `--agent` name and the worktree, only when there is one |
@@ -98,7 +98,8 @@ The script stores nothing and sends nothing: there's no daemon, cache or
 network call, and a render takes about 40 ms. It reads four things:
 
 - The JSON Claude Code passes it. It uses the directory, model, effort,
-  agent, worktree, limits, cost and context size, and never the transcript.
+  agent, worktree, limits, cost, context size and fast mode, and never the
+  transcript.
 - One read-only `git status`. It never takes the index lock and gives up
   after 0.5 s. A few files under `.git` are also read, to spot a rebase or
   merge and count stashes.
@@ -196,10 +197,11 @@ There are two ways to handle a narrow window, and one is chosen with
 | Drop | `1` | Stays on one line and sheds detail, then fields | Vertical space matters more |
 
 Once there's no room left, both modes shed in the same order. The reset
-times go first, then the context percentage, the full path, the git symbols
-and the effort level. After that whole fields go, starting with the account,
-then agent, memory, git, model and directory. Quota, cost and context always
-stay, and widening the window brings everything back.
+times go first, then the context percentage, the full path, the git symbols,
+and the effort level along with the fast mode badge. After that whole fields
+go, starting with the account, then agent, memory, git, model and directory.
+Quota, cost and context always stay, and widening the window brings
+everything back.
 
 The wrap at 90 columns is in the [examples](#examples). The drop, at
 shrinking widths:
