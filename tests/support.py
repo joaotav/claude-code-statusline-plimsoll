@@ -74,8 +74,9 @@ def environment(
     max_lines: int = 1,
 ) -> ExitStack:
     """Patch everything a render depends on outside its payload: the clock,
-    HOME, NO_COLOR, the icons and line switches, git, the logged-in account
-    and memory. One line by default, the layout most tests describe."""
+    HOME, NO_COLOR, the icons and line switches, git, the logged-in account,
+    memory and the user's settings file. One line by default, the layout most
+    tests describe."""
     stack = ExitStack()
     stack.enter_context(mock.patch.object(statusline, "datetime", FrozenDateTime))
     env = {"HOME": HOME}
@@ -84,8 +85,6 @@ def environment(
     stack.enter_context(mock.patch.dict(os.environ, env))
     if colour:
         os.environ.pop("NO_COLOR", None)  # restored by patch.dict on exit
-    os.environ.pop("STATUSLINE_ICONS", None)  # the icons switch decides
-    os.environ.pop("STATUSLINE_ACCOUNT", None)
     stack.enter_context(
         mock.patch.dict(statusline.CONFIG, {"icons": icons, "colour": colour, "max_lines": max_lines})
     )
@@ -95,6 +94,8 @@ def environment(
     stack.enter_context(mock.patch.object(statusline, "git_dirs", return_value=None))
     stack.enter_context(mock.patch.object(statusline, "account_email", return_value=account))
     stack.enter_context(mock.patch.object(statusline, "memory_reading", return_value=memory))
+    # The developer's own settings file must not change what a test sees.
+    stack.enter_context(mock.patch.object(statusline, "config_file", return_value=None))
     return stack
 
 

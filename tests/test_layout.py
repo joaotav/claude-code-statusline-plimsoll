@@ -38,12 +38,6 @@ class OrderTest(unittest.TestCase):
         with environment(git=GIT, account=ACCOUNT, memory=MEMORY), mock.patch.dict(statusline.CONFIG, {"show_account": False}):
             self.assertNotIn(ACCOUNT, run_main(payload()))
 
-    def test_env_var_turns_the_account_off(self):
-        with environment(git=GIT, account=ACCOUNT, memory=MEMORY), mock.patch.dict("os.environ", {"STATUSLINE_ACCOUNT": "0"}):
-            line = run_main(payload())
-        self.assertNotIn(ACCOUNT, line)
-        self.assertTrue(line.endswith("repo:main !1 ?1 ⇡2"))
-
     def test_session_cost_is_not_shown(self):
         # A subscription: the cost would be an estimate, not a bill.
         with environment(git=GIT):
@@ -333,14 +327,6 @@ class LabelsAndColourTest(unittest.TestCase):
         for label in statusline.TEXT_LABELS.values():
             with self.subTest(label):
                 self.assertNotIn(label, line)
-
-    def test_env_var_turns_icons_off(self):
-        with environment(icons=True, git=GIT), mock.patch.dict("os.environ", {"STATUSLINE_ICONS": "0"}):
-            line = run_main(payload())
-        self.assertIn("5h 23.5%", line)
-        for icon in statusline.ICONS.values():
-            with self.subTest(icon):
-                self.assertNotIn(icon, line)
 
     def test_colour_on_emits_ansi(self):
         with environment(colour=True, git=GIT):
