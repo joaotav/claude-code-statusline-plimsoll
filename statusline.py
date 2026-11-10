@@ -26,6 +26,10 @@ from pathlib import Path
 # CONFIG
 # --------------------------------------------------------------------------
 
+# The defaults. To change one, set it in CONFIG_FILE in Claude's config
+# folder rather than here, so `git pull` keeps working.
+CONFIG_FILE = "plimsoll-status-line-config.json"
+
 CONFIG = {
     # Segments, in display order.
     "show_cwd": True,
@@ -39,8 +43,7 @@ CONFIG = {
     "show_output_style": True,
     "show_git": True,
     # The logged-in account's email, to tell accounts apart. Reads that one
-    # field from the active config dir's .claude.json. STATUSLINE_ACCOUNT=0
-    # also turns it off, without editing this file.
+    # field from the active config dir's .claude.json.
     "show_account": True,
     # System RAM in use out of the total. Linux and macOS.
     "show_memory": True,
@@ -58,8 +61,7 @@ CONFIG = {
     "crit_at": 85.0,
     "colour": True,
     # Nerd Font glyphs instead of text labels. Turn off in a terminal whose
-    # font lacks them, or they draw as boxes. STATUSLINE_ICONS=0 also turns
-    # them off, without editing this file.
+    # font lacks them, or they draw as boxes.
     "icons": True,
     # Layout. The separator is drawn dim, so the values stand out.
     "separator": " • ",
@@ -136,17 +138,13 @@ def use_colour() -> bool:
     return CONFIG["colour"] and not os.environ.get("NO_COLOR")
 
 
-def use_icons() -> bool:
-    return CONFIG["icons"] and os.environ.get("STATUSLINE_ICONS") != "0"
-
-
 def paint(text: str, code: str) -> str:
     return f"{code}{text}{RESET}" if use_colour() else text
 
 
 def labelled(key: str, text: str) -> str:
     """Prefix `text` with the segment's icon, or its text label as fallback."""
-    label = ICONS[key] if use_icons() else TEXT_LABELS.get(key, "")
+    label = ICONS[key] if CONFIG["icons"] else TEXT_LABELS.get(key, "")
     return f"{label} {text}" if label else text
 
 
@@ -465,7 +463,7 @@ def model_segment(data: dict) -> tuple[int, list[str]] | None:
         rich += f" ({effort})"
     # Fast mode spends the usage limits sooner. Sheds with the effort level.
     if data.get("fast_mode") is True:
-        rich += " " + (ICONS["fast"] if use_icons() else TEXT_LABELS["fast"])
+        rich += " " + (ICONS["fast"] if CONFIG["icons"] else TEXT_LABELS["fast"])
     return (2, at_stage(5, rich, short) if rich != short else [short])
 
 
@@ -753,7 +751,47 @@ def terminal_width() -> int:
         return CONFIG["fallback_width"]
 
 
+def config_file() -> Path | None:
+    """The user's settings: in the active config dir, else in ~/.claude, so
+    one file covers every account and an account can still have its own."""
+    default = Path.home() / ".claude"
+    config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
+    for folder in (Path(config_dir), default) if config_dir else (default,):
+        if (folder / CONFIG_FILE).is_file():
+            return folder / CONFIG_FILE
+    return None
+
+
+def same_kind(value, default) -> bool:
+    # bool is a kind of int, so it only matches itself; a whole number will
+    # do for a decimal.
+    if isinstance(default, bool) or isinstance(value, bool):
+        return isinstance(default, bool) and isinstance(value, bool)
+    if isinstance(default, float):
+        return isinstance(value, (int, float))
+    return isinstance(value, type(default))
+
+
+def load_settings() -> None:
+    """Merge the user's settings over the defaults. A missing or broken file
+    changes nothing, and a key that's unknown or of the wrong type is
+    skipped, so a typo can't blank the line."""
+    path = config_file()
+    if path is None:
+        return
+    try:
+        settings = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(settings, dict):
+        return
+    for key, value in settings.items():
+        if key in CONFIG and same_kind(value, CONFIG[key]):
+            CONFIG[key] = value
+
+
 def main() -> None:
+    load_settings()
     raw = sys.stdin.read()
     data = json.loads(raw) if raw.strip() else {}
     if not isinstance(data, dict):
@@ -761,8 +799,7 @@ def main() -> None:
 
     # Priority decides what drops when even the sparsest variants overflow:
     # highest number first, so account, output style, agent, memory, git,
-    # model and cwd;
-    # quota, cost and context (priority 0) never drop.
+    # model and cwd; quota, cost and context (priority 0) never drop.
     segments: list[tuple[int, list[str]]] = []
     if CONFIG["show_cwd"]:
         segments += filter(None, [cwd_segment(data)])
@@ -782,7 +819,7 @@ def main() -> None:
         segments += filter(None, [git_segment(data)])
     if CONFIG["show_agent"]:
         segments += filter(None, [agent_segment(data)])
-    if CONFIG["show_account"] and os.environ.get("STATUSLINE_ACCOUNT") != "0":
+    if CONFIG["show_account"]:
         segments += filter(None, [account_segment()])
 
     if not segments:

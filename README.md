@@ -96,7 +96,7 @@ still the main repository's.
 ## Privacy
 
 The script stores nothing and sends nothing: there's no daemon, cache or
-network call, and a render takes about 40 ms. It reads four things:
+network call, and a render takes about 40 ms. It reads five things:
 
 - The JSON Claude Code passes it. It uses the directory, model, effort,
   agent, worktree, limits, cost, context size, fast mode and output style,
@@ -107,11 +107,12 @@ network call, and a render takes about 40 ms. It reads four things:
 - `.claude.json`, and only the account email in it. The login token is kept
   in a different file, which is never opened.
 - The system memory totals, from `/proc/meminfo` or `vm_stat`.
+- Your [settings file](#configuration), if you've made one.
 
 It uses only Python's standard library. The directory, repository, agent
-and email do show on screen, so turn off `show_cwd`, `show_git`, `show_agent`
-and `show_account` before sharing your screen. `STATUSLINE_ACCOUNT=0` hides
-the email without editing the script.
+and email do show on screen, so set `show_cwd`, `show_git`, `show_agent` and
+`show_account` to `false` in your [settings file](#configuration) before
+sharing your screen.
 
 ## Install
 
@@ -155,36 +156,42 @@ To add the block by hand instead, use the full path to the script:
 ```
 
 `refreshInterval` keeps the numbers current while you're idle. To update,
-run `git pull`.
+run `git pull`. To change what the line shows, see
+[Configuration](#configuration).
 
 ## Configuration
 
-### Environment variables
-
-Put these in front of the `statusLine` command. They leave the script
-untouched, so `git pull` keeps working.
-
-| Variable | Effect |
-|---|---|
-| `STATUSLINE_ICONS=0` | The minimal line, as `icons: False` |
-| `STATUSLINE_ACCOUNT=0` | No account email, as `show_account: False` |
-| `NO_COLOR=1` | No colour, as `colour: False` |
-
-For example, the minimal line without the account:
+Settings go in `plimsoll-status-line-config.json`, in Claude's config
+folder: `~/.claude`, or the folder `CLAUDE_CONFIG_DIR` names. The script
+never creates it, so make it when you want to change something, and list
+only the keys you change. For example, the minimal line without the account:
 
 ```json
-"command": "STATUSLINE_ICONS=0 STATUSLINE_ACCOUNT=0 /home/you/claude-code-statusline-plimsoll/statusline.py"
+{
+  "icons": false,
+  "show_account": false
+}
 ```
 
-### Settings in the script
+The file sits outside the clone, so `git pull` keeps working. With several
+accounts through `CLAUDE_CONFIG_DIR`, a folder without its own file uses the
+one in `~/.claude`, so one file covers every account. A missing or broken
+file leaves the defaults, and a key that's unknown or has the wrong type is
+skipped, so a typo never blanks the line.
 
-Edit `CONFIG` at the top of `statusline.py`.
+`NO_COLOR=1` in front of the `statusLine` command also turns colour off, as
+it does for any program that follows [no-color.org](https://no-color.org).
+
+### Settings
+
+The defaults are in `CONFIG` at the top of `statusline.py`. Change them in
+the file rather than there.
 
 | Key | Default | Effect |
 |---|---|---|
-| `show_cwd`, `show_quota`, `show_cost`, `show_context`, `show_model`, `show_output_style`, `show_memory`, `show_git`, `show_agent`, `show_account` | `True` | Each field |
-| `icons` | `True` | Nerd Font icons. `False` gives the minimal line |
-| `colour` | `True` | Colour |
+| `show_cwd`, `show_quota`, `show_cost`, `show_context`, `show_model`, `show_output_style`, `show_memory`, `show_git`, `show_agent`, `show_account` | `true` | Each field |
+| `icons` | `true` | Nerd Font icons. `false` gives the minimal line |
+| `colour` | `true` | Colour |
 | `warn_at`, `crit_at` | `60`, `85` | Percentages that turn yellow and red |
 | `separator` | `" • "` | Goes between fields, drawn dim |
 | `max_lines` | `2` | `2` wraps, `1` drops. See [Narrow terminals](#narrow-terminals) |
