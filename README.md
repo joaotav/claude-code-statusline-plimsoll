@@ -1,46 +1,101 @@
-![Three real status lines from the script, comfortable, getting close and critical](docs/banner.jpg)
+<p align="center">
+  <img src="docs/banner.jpg" alt="Three real status lines from the script: comfortable, getting close and critical">
+</p>
 
-# Plimsoll - A configurable Claude Code status line
+<h1 align="center">Plimsoll</h1>
 
-[![tests](https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml/badge.svg)](https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml)
-![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
-![Linux | macOS](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey)
-![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
-[![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+<p align="center">
+  <strong>A Claude Code status line that shows how close you are to your limits.</strong>
+</p>
 
-A status line for Claude Code. It shows how close you are to your 5-hour,
-weekly and context limits, along with the directory, model, effort level,
-fast mode, output style, system memory, git state, agent and worktree, and
-logged-in account. With an API key it shows the session's cost instead of the limits.
-When the prompt cache has gone cold, it warns before your next message
-resends a big context.
+<p align="center">
+  <a href="https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml"><img src="https://github.com/joaotav/claude-code-statusline-plimsoll/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
+  <img src="https://img.shields.io/badge/python-3.8%2B-blue" alt="Python 3.8+">
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey" alt="Linux | macOS">
+  <img src="https://img.shields.io/badge/dependencies-none-brightgreen" alt="No dependencies">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+</p>
 
-It's named after the Plimsoll line, the mark painted on a ship's hull that
-shows how heavily it can safely be loaded. Below the mark is safe, and past
-it the ship is overloaded. This line does the same for Claude Code.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#fields">Fields</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#faq">FAQ</a> ·
+  <a href="#privacy">Privacy</a>
+</p>
 
-The line fits the terminal: on a narrow window it wraps, then sheds detail,
-and usage and context are never dropped.
+A Plimsoll line is the mark painted on a ship's hull that shows how heavily
+it can be loaded. This one does the same for Claude Code: your 5-hour,
+weekly and context limits sit at the front of the line, and turn yellow,
+then red, as they fill up.
+
+## Features
+
+- **Limits at a glance.** The 5-hour and weekly usage, with the clock time
+  each one resets, and how full the context window is. With an API key it
+  shows the session's cost instead.
+- **A warning before an expensive message.** Once the prompt cache has
+  expired, it shows how many tokens your next message will send again at
+  full price, so you can `/compact` or `/clear` first.
+- **Fits the window.** On a narrow terminal the line wraps onto a second
+  row, then sheds detail in a fixed order. Usage and context never drop.
+- **Setup with a live preview.** Pick fields, icons, colour and order on
+  one screen, and watch the line change as you go.
+- **Nothing to install, nothing sent.** One Python file using only the
+  standard library. No network calls, no credentials, one `git status`.
+
+It also shows the directory, model and effort level, fast mode, output
+style, git state, system memory, the agent and worktree, and the logged-in
+account. Each field can be turned off or moved.
+
+## Quick start
+
+You need Linux or macOS, Python 3.8 or later and Claude Code v2.1.153 or
+later. The icons need a [Nerd Font](https://www.nerdfonts.com); without one,
+turn them off for the minimal line.
+
+```sh
+git clone https://github.com/joaotav/claude-code-statusline-plimsoll.git ~/claude-code-statusline-plimsoll
+python3 ~/claude-code-statusline-plimsoll/scripts/setup.py
+```
+
+The setup screen opens with a live preview of the line. Choose what to
+show, press `s` to save, and answer `y` when it offers to add the status
+line to Claude Code. It appears straight away.
+
+![The setup screen: turning a field off, moving git to the front, turning icons off and on, and narrowing the preview](docs/setup.gif)
+
+| Key | Does |
+|---|---|
+| `↑` `↓` | Move between settings |
+| `Space`, `←` `→` | Change the selected setting |
+| `Shift+↑` `Shift+↓` | Move the selected field along the line |
+| `[` `]` | Narrow and widen the preview, to see how a smaller window looks |
+| `s` | Save |
+| `q` | Quit, asking first if anything changed |
+
+Run it again whenever you want to change something. To update, `git pull`
+in the clone. Your settings live outside it.
 
 ## Examples
 
-**With icons (default):**
+**With icons, the default**
 
 ![The status line with Nerd Font icons](docs/statusline-icons.png)
 
-**Minimal (see [Icons or minimal](#icons-or-minimal)):**
+**Minimal, with icons off**
 
 ![The same line as plain text](docs/statusline-plain.png)
 
-**Near the limits, mid-rebase (see [Fields](#fields)):**
+**Near the limits, in the middle of a rebase**
 
 ![The status line with red percentages, warnings and a rebase in progress](docs/statusline-critical.png)
 
-**With an API key, run with `--agent` in a worktree (see [Fields](#fields)):**
+**With an API key, run with `--agent` in a worktree**
 
 ![The status line showing cost, agent and worktree](docs/statusline-api-key.png)
 
-**Wrapped at 90 columns (see [Narrow terminals](#narrow-terminals)):**
+**Wrapped at 90 columns**
 
 ![The status line wrapped onto two lines](docs/statusline-wrapped.png)
 
@@ -53,21 +108,30 @@ and usage and context are never dropped.
 | Weekly limit | `7d 41.2% [Thu 14:00]` | Share used, and when it resets |
 | Cost | `$1.23` | What the session has cost, with an API key only |
 | Context | `477k/1M 48%` | How full the context window is |
-| Cold cache | `cold 152k to rebuild` | Tokens the next message will resend at full price, only once the cache has expired and the context is big. Needs Claude Code v2.1.251 or later |
+| Cold cache | `cold 152k to rebuild` | Tokens the next message will send again, once the cache has expired and the context is big. Claude Code v2.1.251 or later |
 | Model | `Opus 5.5 (high) fast` | Model and effort level, and `fast` (a bolt with icons) in fast mode |
-| Output style | `style Explanatory` | The output style, only when it isn't the default |
+| Output style | `style Explanatory` | The output style, when it isn't the default |
 | Memory | `7.6GB/14.8GB` | System RAM in use, as `free -h` counts it |
 | Git | `my-project:main !2 +1 ?1 ⇡2` | Repository, branch and changes |
-| Agent | `agent reviewer worktree my-feature` | The `--agent` name and the worktree, only when there is one |
+| Agent | `agent reviewer worktree my-feature` | The `--agent` name and the worktree, when there is one |
 | Account | `me@example.com` | Which account is logged in |
 
-The cost, agent and worktree show in the [API key example](#examples).
-
 Percentages and memory turn yellow at 60% and red at 85%. From 85% they
-also get a `⚠`, so the warning shows without colour too, as in the
-[near the limits example](#examples).
+also get a `⚠`, so the warning reads without colour too.
 
-The git symbols follow the same format as Starship and Powerlevel10k, and remain hidden when their count is zero.
+A value Claude Code hasn't sent yet is left out rather than shown as `0%`.
+Reset times are clock times, because a countdown goes stale between
+refreshes and `19:45` doesn't. The cost only shows without the 5-hour and
+weekly limits: Claude Code prices every session at API rates, and that
+figure is only a bill when you pay by API key.
+
+<details>
+<summary><strong>Git symbols</strong></summary>
+
+<br>
+
+The symbols match Starship and Powerlevel10k, and each one hides when its
+count is zero.
 
 | Symbol | Means | Colour |
 |---|---|---|
@@ -82,81 +146,187 @@ The git symbols follow the same format as Starship and Powerlevel10k, and remain
 
 A detached HEAD shows as `@a1b2c3d`. During a rebase, merge, cherry-pick,
 revert or bisect, the operation follows the branch in yellow, as in
-`my-project:feature|REBASE 2/5 =1` and the
-[near the limits example](#examples). Inside a linked worktree the name is
+`my-project:feature|REBASE 2/5 =1`. Inside a linked worktree the name is
 still the main repository's.
 
-## Design choices
+</details>
 
-- **Missing means hidden.** An unknown value is left out instead of being
-  shown as `0%`.
-- **Reset times are clock times.** A countdown goes stale between refreshes,
-  and `19:45` doesn't.
-- **Cost only when it's a bill.** Claude Code prices every session at API
-  rates, which is a bill only with an API key. The cost shows only for
-  sessions without the 5-hour and weekly limits.
+## Configuration
 
-## Privacy
+The easiest way is the setup screen, `python3 scripts/setup.py`. It
+writes `plimsoll-status-line-config.json` in Claude's config folder,
+`~/.claude` or the folder `CLAUDE_CONFIG_DIR` names, and Claude Code picks
+up the change at its next refresh.
 
-The script stores nothing and sends nothing: there's no daemon, cache or
-network call, and a render takes about 40 ms. It reads five things:
+You can also write that file by hand. List only the keys you change:
 
-- The JSON Claude Code passes it. It uses the directory, model, effort,
-  agent, worktree, limits, cost, context size, fast mode and output style,
-  and never the transcript.
-- One read-only `git status`. It never takes the index lock and gives up
-  after 0.5 s. A few files under `.git` are also read, to spot a rebase or
-  merge and count stashes.
-- `.claude.json`, and only the account email in it. The login token is kept
-  in a different file, which is never opened.
-- The system memory totals, from `/proc/meminfo` or `vm_stat`.
-- Your [settings file](#configuration), if you've made one.
+```json
+{
+  "icons": false,
+  "show_account": false,
+  "order": ["git"]
+}
+```
 
-It uses only Python's standard library. The directory, repository, agent
-and email do show on screen, so set `show_cwd`, `show_git`, `show_agent` and
-`show_account` to `false` in your [settings file](#configuration) before
-sharing your screen.
+A missing or broken file leaves the defaults, and a key that's unknown or
+has the wrong type is skipped, so a typo never blanks the line.
+`NO_COLOR=1` in front of the `statusLine` command also turns colour off,
+as for any program that follows [no-color.org](https://no-color.org).
 
-## Install
+### Settings
 
-It runs on Linux and macOS, both tested in CI. Windows isn't supported.
+| Key | Default | Effect |
+|---|---|---|
+| `show_cwd`, `show_quota`, `show_cost`, `show_context`, `show_cache`, `show_model`, `show_output_style`, `show_memory`, `show_git`, `show_agent`, `show_account` | `true` | Each field |
+| `show_input_tokens`, `show_cache_split`, `show_output_tokens`, `show_duration`, `show_lines_changed` | `false` | Extra detail, shown with the context |
+| `icons` | `true` | Nerd Font icons. `false` gives the [minimal line](#icons-or-minimal) |
+| `colour` | `true` | Colour |
+| `warn_at`, `crit_at` | `60`, `85` | Percentages that turn yellow and red |
+| `cold_cache_tokens` | `50000` | The smallest rebuild the cold cache field shows |
+| `order` | `[]` | Field names in the order to show them. See [Field order](#field-order) |
+| `separator` | `" • "` | Goes between fields, drawn dim |
+| `max_lines` | `2` | `2` wraps, `1` drops. See [Narrow terminals](#narrow-terminals) |
+| `git_timeout` | `0.5` | Seconds before a slow `git status` is abandoned |
 
-You need Claude Code v2.1.153 or later and Python 3.8 or later. `git` is
-only needed for the git field. The icons need a [Nerd Font](https://www.nerdfonts.com),
-and without one you'll want the minimal line.
+The defaults live in `CONFIG` at the top of `statusline.py`. Change them in
+your settings file instead, so `git pull` keeps working.
+
+### Field order
+
+`order` names fields by their `show_` key without the `show_`: `cwd`,
+`cost`, `quota`, `context`, `cache`, `model`, `output_style`, `memory`,
+`git`, `agent` and `account`, which is also the usual order. Fields you
+leave out follow in that order, so `["git"]` moves git to the front and
+keeps the rest as they were. Unknown names and repeats are skipped, and the
+context extras stay with `context`.
+
+### Icons or minimal
+
+With icons off, the line is plain text with almost no labels, as in the
+[minimal example](#examples). The two limits keep `5h` and `7d`, since two
+bare percentages would look the same.
+
+### Narrow terminals
+
+| Mode | `max_lines` | On a narrow terminal | Choose it when |
+|---|---|---|---|
+| Wrap, the default | `2` | Fields move to a second line, in order. Nothing is lost until both lines are full | You want every field and can spare a row |
+| Drop | `1` | Stays on one line and sheds detail, then fields | Vertical space matters more |
+
+Dropping, at shrinking widths:
+
+```
+110 cols  my-project • 5h 23.5% • 7d 41.2% • 16k/200k • Opus 5.5 • 7.8GB/14.8GB • my-project:main • me@example.com
+ 71 cols  my-project • 5h 23.5% • 7d 41.2% • 16k/200k • Opus 5.5
+ 42 cols  5h 23.5% • 7d 41.2% • 16k/200k
+```
+
+<details>
+<summary><strong>The order things are shed in</strong></summary>
+
+<br>
+
+Once there's no room left, both modes shed in the same order, wherever the
+fields sit. Detail goes first:
+
+1. The reset times, and "to rebuild" after a cold cache
+2. The context percentage
+3. The full path, leaving the folder name
+4. The git symbols
+5. The effort level and the fast mode badge
+
+Then whole fields, in this order: account, output style, agent, memory,
+git, model, cold cache and directory. The limits, cost and context always
+stay, and widening the window brings everything back.
+
+</details>
+
+## FAQ
+
+<details>
+<summary><strong>What should I do when the line says the cache is cold?</strong></summary>
+
+<br>
+
+The cache expires after a while without a message, 5 minutes by default,
+and the next one then sends the whole conversation again at full price. What to do depends
+on whether you still need that conversation:
+
+- **Same task, still need it:** just send. You pay once, and the cache is
+  warm again.
+- **Moving on to something new:** `/clear` first. A fresh conversation has
+  nothing to rebuild.
+- **Same task, but most of it is stale:** `/compact`. It costs about the
+  same as a message this time, but every message after it is smaller.
+
+It matters most when a limit is already yellow.
+
+</details>
+
+<details>
+<summary><strong>The icons show as boxes or question marks</strong></summary>
+
+<br>
+
+Your terminal's font has no Nerd Font glyphs. Install one from
+[nerdfonts.com](https://www.nerdfonts.com) and select it in your terminal,
+or turn icons off in the setup screen.
+
+</details>
+
+<details>
+<summary><strong>The usage limits don't show</strong></summary>
+
+<br>
+
+Claude Code only sends them to claude.ai subscribers, and only after the
+session's first response. With an API key there are none, so the line shows
+the session's cost instead.
+
+</details>
+
+<details>
+<summary><strong>The status line doesn't appear</strong></summary>
+
+<br>
+
+Check that Claude Code is v2.1.153 or later, and that `settings.json` has
+the `statusLine` block: `python3 scripts/install.py` adds it, or says it's
+already there. To test the script on its own, render a sample:
 
 ```sh
-git clone https://github.com/joaotav/claude-code-statusline-plimsoll.git ~/claude-code-statusline-plimsoll
-cd ~/claude-code-statusline-plimsoll
 python3 scripts/make-fixtures.py > /dev/null && ./statusline.py < fixtures/full.json
 ```
 
-The last line renders a sample so you can check it works. Then choose what
-the line shows:
+</details>
+
+<details>
+<summary><strong>I use several accounts with <code>CLAUDE_CONFIG_DIR</code></strong></summary>
+
+<br>
+
+Each config folder has its own `settings.json`, so install once for each:
 
 ```sh
-python3 scripts/setup.py
+CLAUDE_CONFIG_DIR=~/.claude-work python3 scripts/install.py
 ```
 
-This opens a screen with a live preview, drawn from your own directory, git
-and account. Arrow keys move, space or ←→ change a setting, Shift+↑↓ moves
-a field up or down the line, and `s` saves.
-`[` and `]` narrow and widen the preview, to see how the line fits a smaller
-window. When you save, it offers to point Claude Code at the script, if that
-isn't done yet. You can also do that step on its own:
+The settings file is shared: a folder without its own uses the one in
+`~/.claude`. To give an account different settings, create an empty
+`{}` file in its folder, then run the setup with the same
+`CLAUDE_CONFIG_DIR`.
 
-```sh
-python3 scripts/install.py
-```
+</details>
 
-This adds the `statusLine` block to `~/.claude/settings.json` and leaves your
-other settings alone. It backs the file up first, and asks before replacing a
-status line that's already there. If you use several accounts through
-`CLAUDE_CONFIG_DIR`, each config folder has its own `settings.json`, so run
-it once for each, as in
-`CLAUDE_CONFIG_DIR=~/.claude-work python3 scripts/install.py`.
+<details>
+<summary><strong>Can I install it without the setup screen?</strong></summary>
 
-To add the block by hand instead, use the full path to the script:
+<br>
+
+`python3 scripts/install.py` adds the `statusLine` block to
+`~/.claude/settings.json` and leaves your other settings alone. It backs
+the file up first, and asks before replacing a status line that's already
+there. Or add the block by hand, with the full path to the script:
 
 ```json
 {
@@ -169,121 +339,43 @@ To add the block by hand instead, use the full path to the script:
 }
 ```
 
-`refreshInterval` keeps the numbers current while you're idle. To update,
-run `git pull`. To change what the line shows, see
-[Configuration](#configuration).
+`refreshInterval` keeps the numbers current while you're idle.
 
-### Uninstall
+</details>
+
+<details>
+<summary><strong>How do I uninstall it?</strong></summary>
+
+<br>
 
 ```sh
 python3 scripts/install.py --uninstall
 ```
 
 This removes the `statusLine` block, but only if it runs this script, and
-backs up `settings.json` first. It then offers to delete
-`plimsoll-status-line-config.json` from the same folder. With
-`CLAUDE_CONFIG_DIR`, it only touches that folder, so a shared file in
-`~/.claude` stays for your other accounts. After that, delete the clone.
+backs up `settings.json` first. It then offers to delete your settings file
+from the same folder. With `CLAUDE_CONFIG_DIR` it only touches that folder,
+so a shared file in `~/.claude` stays for your other accounts. After that,
+delete the clone.
 
-## Configuration
+</details>
 
-Run `python3 scripts/setup.py` whenever you want to change what the line
-shows. It opens on your current settings, and Claude Code picks up the
-change at its next refresh.
+## Privacy
 
-Settings go in `plimsoll-status-line-config.json`, in Claude's config
-folder: `~/.claude`, or the folder `CLAUDE_CONFIG_DIR` names. The status
-line never creates it. Setup writes it when you save something other than
-the defaults, with only the keys you changed, and keeps any others already
-there. You can also write it by hand. For example, the minimal line without
-the account:
+The script stores nothing and sends nothing. There's no daemon, cache or
+network call, and a render takes about 40 ms. It reads five things:
 
-```json
-{
-  "icons": false,
-  "show_account": false
-}
-```
+- The JSON Claude Code passes it, and never the transcript.
+- One read-only `git status`, which never takes the index lock and gives up
+  after 0.5 s. A few files under `.git` are also read, to spot a rebase or
+  merge and count stashes.
+- The account email from `.claude.json`, and nothing else in it. The login
+  token is in a different file, which is never opened.
+- The system memory totals, from `/proc/meminfo` or `vm_stat`.
+- Your settings file, if you've made one.
 
-The file sits outside the clone, so `git pull` keeps working. With several
-accounts through `CLAUDE_CONFIG_DIR`, a folder without its own file uses the
-one in `~/.claude`, so one file covers every account. A missing or broken
-file leaves the defaults, and a key that's unknown or has the wrong type is
-skipped, so a typo never blanks the line.
-
-`NO_COLOR=1` in front of the `statusLine` command also turns colour off, as
-it does for any program that follows [no-color.org](https://no-color.org).
-
-### Settings
-
-The defaults are in `CONFIG` at the top of `statusline.py`. Change them in
-the file rather than there.
-
-| Key | Default | Effect |
-|---|---|---|
-| `show_cwd`, `show_quota`, `show_cost`, `show_context`, `show_cache`, `show_model`, `show_output_style`, `show_memory`, `show_git`, `show_agent`, `show_account` | `true` | Each field |
-| `icons` | `true` | Nerd Font icons. `false` gives the minimal line |
-| `colour` | `true` | Colour |
-| `warn_at`, `crit_at` | `60`, `85` | Percentages that turn yellow and red |
-| `cold_cache_tokens` | `50000` | The smallest rebuild the cold cache field shows |
-| `separator` | `" • "` | Goes between fields, drawn dim |
-| `order` | `[]` | Field names in the order to show them. See [Field order](#field-order) |
-| `max_lines` | `2` | `2` wraps, `1` drops. See [Narrow terminals](#narrow-terminals) |
-| `git_timeout` | `0.5` | Seconds before a slow `git status` is abandoned |
-
-`show_input_tokens`, `show_cache_split`, `show_output_tokens`,
-`show_duration` and `show_lines_changed` also exist, and are off by default.
-
-### Field order
-
-`order` lists fields by their `show_` key without the `show_`: `cwd`,
-`cost`, `quota`, `context`, `cache`, `model`, `output_style`, `memory`,
-`git`, `agent` and `account`, which is also the usual order. Fields you
-leave out follow in the usual order, so naming one moves it to the front:
-
-```json
-{
-  "order": ["git"]
-}
-```
-
-Unknown names and repeats are skipped. The context extras, such as input
-tokens and duration, stay with `context`. Moving a field doesn't change
-when it's shed on a narrow terminal: the account still goes first, wherever
-it sits.
-
-### Icons or minimal
-
-Turn icons off for plain text with almost no labels, as in the
-[minimal example](#examples). The two quotas keep `5h` and `7d`, since two
-bare percentages would look the same.
-
-### Narrow terminals
-
-There are two ways to handle a narrow window, and one is chosen with
-`max_lines`.
-
-| Mode | `max_lines` | On a narrow terminal | Choose it when |
-|---|---|---|---|
-| Wrap, the default | `2` | Fields move to a second line, in order. Nothing is lost until both lines are full | You want every field and can spare a row |
-| Drop | `1` | Stays on one line and sheds detail, then fields | Vertical space matters more |
-
-Once there's no room left, both modes shed in the same order. The reset
-times go first, along with the words "to rebuild" after a cold cache, then
-the context percentage, the full path, the git symbols, and the effort level
-along with the fast mode badge. After that whole fields go, starting with
-the account, then output style, agent, memory, git, model, cold cache and
-directory. Quota, cost and context always stay, and widening the window
-brings everything back.
-
-The wrap at 90 columns is in the [examples](#examples). The drop, at
-shrinking widths:
-
-```
-110 cols  my-project • 5h 23.5% • 7d 41.2% • 16k/200k • Opus 5.5 • 7.8GB/14.8GB • my-project:main • me@example.com
- 71 cols  my-project • 5h 23.5% • 7d 41.2% • 16k/200k • Opus 5.5
- 42 cols  5h 23.5% • 7d 41.2% • 16k/200k
-```
+The directory, repository, agent and email do show on screen. Turn those
+fields off before sharing your screen.
 
 ## Development
 
@@ -292,14 +384,14 @@ python3 -m unittest discover -s tests -t .   # tests, Python 3.11+
 ./scripts/run-fixtures.sh                    # render every sample input
 python3 scripts/make-screenshots.py          # README images, needs Pillow and a Nerd Font
 python3 scripts/make-banner.py               # the banner, also needs Space Grotesk and Inter
+python3 scripts/make-setup-gif.py            # the setup GIF, also needs tmux
 ```
 
-The tests freeze the clock and stub git. Some run real git and read real
-memory. CI runs them on Linux and macOS.
+The tests freeze the clock and stub git, and a few run real git and read
+real memory. CI runs them on Linux and macOS with Python 3.11 and 3.14, and
+renders every sample with Python 3.8.
 
 ## Acknowledgements
-
-The following projects served as inspiration for this mod:
 
 - [One Dark Triptych](https://statuslin.es/c/one-dark-triptych-071e85e2) by
   adrijshikhar, for spreading a status line over more than one line, dim
@@ -316,4 +408,4 @@ The following projects served as inspiration for this mod:
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+[MIT](LICENSE)
