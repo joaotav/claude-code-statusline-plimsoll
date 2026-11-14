@@ -34,6 +34,34 @@ class OrderTest(unittest.TestCase):
             "repo:main !1 ?1 ⇡2 • me@example.com",
         )
 
+    def test_a_full_order(self):
+        order = ["git", "model", "quota", "context", "cwd", "memory", "account"]
+        with environment(git=GIT, account=ACCOUNT, memory=MEMORY), mock.patch.dict(statusline.CONFIG, {"order": order}):
+            line = run_main(payload())
+        self.assertEqual(
+            line,
+            "repo:main !1 ?1 ⇡2 • Opus 5.5 (high) • 5h 23.5% [14:00] • 7d 41.2% [Sun 12:00] • "
+            "16k/200k 8% • ~/…/demo • 7.6GB/14.8GB • me@example.com",
+        )
+
+    def test_fields_left_out_follow_in_the_usual_order(self):
+        with environment(git=GIT, account=ACCOUNT, memory=MEMORY), mock.patch.dict(statusline.CONFIG, {"order": ["git"]}):
+            line = run_main(payload())
+        self.assertTrue(line.startswith("repo:main !1 ?1 ⇡2 • ~/…/demo • 5h 23.5%"))
+
+    def test_unknown_names_and_repeats_are_skipped(self):
+        self.assertEqual(statusline.field_order(["nope", "git", "git", 3, ["cwd"]])[:2], ["git", "cwd"])
+        self.assertEqual(statusline.field_order([]), list(statusline.FIELDS))
+
+    def test_fields_drop_in_the_same_order_wherever_they_sit(self):
+        order = ["account", "git", "model"]
+        with environment(git=GIT, account=ACCOUNT, memory=MEMORY), mock.patch.dict(statusline.CONFIG, {"order": order}):
+            lines = [run_main(payload(), columns=w) for w in range(250, 19, -1)]
+        no_account = next(line for line in lines if ACCOUNT not in line)
+        self.assertIn("repo:main", no_account)
+        no_git = next(line for line in lines if "repo:main" not in line)
+        self.assertIn("Opus", no_git)
+
     def test_account_can_be_turned_off(self):
         with environment(git=GIT, account=ACCOUNT, memory=MEMORY), mock.patch.dict(statusline.CONFIG, {"show_account": False}):
             self.assertNotIn(ACCOUNT, run_main(payload()))

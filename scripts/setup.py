@@ -31,34 +31,36 @@ import statusline  # noqa: E402
 
 DEFAULTS = dict(statusline.CONFIG)
 
-# A heading, or (label, key, hint). A key with a bool default toggles, and the
-# others step through CHOICES. Indented fields only show with Context on.
-ROWS = [
-    "Fields",
-    ("Directory", "show_cwd", "The session's folder, shortened when narrow"),
-    ("Usage limits", "show_quota", "The 5-hour and 7-day limits, with reset times"),
-    ("Cost", "show_cost", "API-key sessions only, in place of the usage limits"),
-    ("Context", "show_context", "Tokens in the context window, and the share used"),
-    ("  Input tokens", "show_input_tokens", "The last call's input tokens"),
-    ("  Cache split", "show_cache_split", "Cache writes and reads, beside the input tokens"),
-    ("  Output tokens", "show_output_tokens", "The last call's output tokens"),
-    ("  Duration", "show_duration", "How long the session has run"),
-    ("  Lines changed", "show_lines_changed", "Lines added and removed this session"),
-    ("Cold cache", "show_cache", "When the next message would resend a big context"),
-    ("Model", "show_model", "With the effort level, and a badge in fast mode"),
-    ("Output style", "show_output_style", "Only when it isn't the default one"),
-    ("Memory", "show_memory", "System memory in use, out of the total"),
-    ("Git", "show_git", "Repository, branch and what's changed"),
-    ("Agent", "show_agent", "The --agent name and worktree, when there is one"),
-    ("Account", "show_account", "The logged-in email, to tell accounts apart"),
-    "Look",
+# Rows are (label, key, hint). A key with a bool default toggles, and the
+# others step through CHOICES. Each field has its own row, then indented rows
+# that only show with it on, and moves with them.
+FIELD_ROWS = {
+    "cwd": [("Directory", "show_cwd", "The session's folder, shortened when narrow")],
+    "cost": [("Cost", "show_cost", "API-key sessions only, in place of the usage limits")],
+    "quota": [("Usage limits", "show_quota", "The 5-hour and 7-day limits, with reset times")],
+    "context": [
+        ("Context", "show_context", "Tokens in the context window, and the share used"),
+        ("  Input tokens", "show_input_tokens", "The last call's input tokens"),
+        ("  Cache split", "show_cache_split", "Cache writes and reads, beside the input tokens"),
+        ("  Output tokens", "show_output_tokens", "The last call's output tokens"),
+        ("  Duration", "show_duration", "How long the session has run"),
+        ("  Lines changed", "show_lines_changed", "Lines added and removed this session"),
+    ],
+    "cache": [("Cold cache", "show_cache", "When the next message would resend a big context")],
+    "model": [("Model", "show_model", "With the effort level, and a badge in fast mode")],
+    "output_style": [("Output style", "show_output_style", "Only when it isn't the default one")],
+    "memory": [("Memory", "show_memory", "System memory in use, out of the total")],
+    "git": [("Git", "show_git", "Repository, branch and what's changed")],
+    "agent": [("Agent", "show_agent", "The --agent name and worktree, when there is one")],
+    "account": [("Account", "show_account", "The logged-in email, to tell accounts apart")],
+}
+LOOK_ROWS = [
     ("Icons", "icons", "Nerd Font glyphs. Turn off if they draw as boxes"),
     ("Colour", "colour", "Green, yellow and red as the limits fill up"),
     ("Narrow terminal", "max_lines", "Wrap onto a second line, or drop fields"),
     ("Separator", "separator", "Goes between fields, drawn dim"),
 ]
-FIELDS = [row for row in ROWS if not isinstance(row, str)]
-KEYS = [key for _, key, _ in FIELDS]
+KEYS = [key for rows in [*FIELD_ROWS.values(), LOOK_ROWS] for _, key, _ in rows] + ["order"]
 
 CHOICES = {
     "max_lines": [(2, "wrap"), (1, "drop")],
@@ -182,8 +184,9 @@ class Editor:
     """Which row is selected and what each setting is, apart from curses."""
 
     def __init__(self, settings: dict):
-        self.settings = dict(settings)
-        self.saved = dict(settings)
+        # The whole order, so every field has a place to move from.
+        self.settings = {**settings, "order": statusline.field_order(settings["order"])}
+        self.saved = dict(self.settings)
         self.choices = {}
         for key, options in CHOICES.items():
             # A value set by hand in the file stays on offer.
@@ -192,16 +195,48 @@ class Editor:
             self.choices[key] = options
         self.cursor = 0
 
+    def rows(self) -> list:
+        """Headings and rows, the fields in their current order."""
+        fields = [row for name in self.settings["order"] for row in FIELD_ROWS[name]]
+        return ["Fields", *fields, "Look", *LOOK_ROWS]
+
+    @property
+    def fields(self) -> list[tuple[str, str, str]]:
+        return [row for row in self.rows() if not isinstance(row, str)]
+
     @property
     def field(self) -> tuple[str, str, str]:
-        return FIELDS[self.cursor]
+        return self.fields[self.cursor]
 
     @property
     def dirty(self) -> bool:
         return self.settings != self.saved
 
     def move(self, step: int) -> None:
-        self.cursor = min(max(self.cursor + step, 0), len(FIELDS) - 1)
+        self.cursor = min(max(self.cursor + step, 0), len(self.fields) - 1)
+
+    def reorder(self, step: int) -> None:
+        """Move the selected field, with its indented rows, up or down."""
+        row = self.field
+        name = next((name for name, rows in FIELD_ROWS.items() if row in rows), None)
+        if name is None:
+            return  # the look settings have no order
+        order = list(self.settings["order"])
+        i = order.index(name)
+        if 0 <= i + step < len(order):
+            order[i], order[i + step] = order[i + step], order[i]
+            self.settings["order"] = order
+            self.cursor = self.fields.index(row)
+
+    def to_save(self) -> dict:
+        """The settings for save(). An order left as it was keeps what the
+        file says, and the usual one is saved as no order at all."""
+        settings = dict(self.settings)
+        if settings["order"] == self.saved["order"]:
+            del settings["order"]
+        elif settings["order"] == list(statusline.FIELDS):
+            settings["order"] = []
+        return settings
 
     def change(self, step: int) -> None:
         key = self.field[1]
@@ -319,7 +354,7 @@ def draw(win, editor: Editor, path: Path, width: int) -> None:
 
     # Headings and settings; the list scrolls so the selected one stays in view.
     lines = []
-    for row in ROWS:
+    for row in editor.rows():
         if isinstance(row, str):
             lines += ([None] if lines else []) + [row]
         else:
@@ -339,7 +374,8 @@ def draw(win, editor: Editor, path: Path, width: int) -> None:
     if offset + room < len(lines):
         put(win, top + room - 1, columns - 2, "↓", curses.A_DIM)
 
-    draw_keys(win, [("↑↓", "move"), ("space", "change"), ("[ ]", "width"), ("s", "save"), ("q", "quit")])
+    keys = [("↑↓", "move"), ("space", "change"), ("⇧↑↓", "reorder"), ("[ ]", "width"), ("s", "save"), ("q", "quit")]
+    draw_keys(win, keys)
     win.refresh()
 
 
@@ -373,6 +409,10 @@ def edit(win, editor: Editor, path: Path) -> bool:
             editor.change(1)
         elif key in (curses.KEY_LEFT, "h"):
             editor.change(-1)
+        elif key in (curses.KEY_SR, "K"):  # Shift+↑
+            editor.reorder(-1)
+        elif key in (curses.KEY_SF, "J"):  # Shift+↓
+            editor.reorder(1)
         elif key == "[":
             width = max(width - 10, 20)
         elif key == "]":
@@ -392,7 +432,7 @@ def main() -> None:
     if not curses.wrapper(edit, editor, path):
         print("Left the settings unchanged.")
         return
-    if save(path, current, editor.settings):
+    if save(path, current, editor.to_save()):
         print(f"Saved to {path}.")
     else:
         print("These are the defaults, so no settings file is needed.")

@@ -31,7 +31,10 @@ from pathlib import Path
 CONFIG_FILE = "plimsoll-status-line-config.json"
 
 CONFIG = {
-    # Segments, in display order.
+    # Field names (the show_ keys without "show_") in the order to show them.
+    # Fields left out follow in the usual order, the order of FIELDS.
+    "order": [],
+    # Segments, in the usual order.
     "show_cwd": True,
     "show_quota": True,
     # The session's cost, with an API key only: on a subscription it is an
@@ -817,35 +820,39 @@ def load_settings() -> None:
             CONFIG[key] = value
 
 
+# Each field's segments, in the usual order.
+FIELDS = {
+    "cwd": lambda data: [cwd_segment(data)],
+    "cost": lambda data: [cost_segment(data)],
+    "quota": quota_segments,
+    "context": context_segments,
+    "cache": lambda data: [cache_segment(data)],
+    "model": lambda data: [model_segment(data)],
+    "output_style": lambda data: [output_style_segment(data)],
+    "memory": lambda data: [memory_segment()],
+    "git": lambda data: [git_segment(data)],
+    "agent": lambda data: [agent_segment(data)],
+    "account": lambda data: [account_segment()],
+}
+
+
+def field_order(order: list) -> list[str]:
+    """The fields named in `order`, skipping unknown names and repeats, then
+    the rest in the usual order."""
+    named = [name for name in order if isinstance(name, str) and name in FIELDS]
+    return list(dict.fromkeys(named + list(FIELDS)))
+
+
 def render(data: dict, width: int) -> str:
     """The line for `data` at `width` columns; empty when nothing is known."""
     # Priority decides what drops when even the sparsest variants overflow:
     # highest number first, so account, output style, agent, memory, git,
-    # model, cold cache and cwd; quota, cost and context (priority 0) never
-    # drop.
+    # model, cold cache and cwd, wherever they sit; between equals, the later
+    # one. Quota, cost and context (priority 0) never drop.
     segments: list[tuple[int, list[str]]] = []
-    if CONFIG["show_cwd"]:
-        segments += filter(None, [cwd_segment(data)])
-    if CONFIG["show_cost"]:
-        segments += filter(None, [cost_segment(data)])
-    if CONFIG["show_quota"]:
-        segments += quota_segments(data)
-    if CONFIG["show_context"]:
-        segments += context_segments(data)
-    if CONFIG["show_cache"]:
-        segments += filter(None, [cache_segment(data)])
-    if CONFIG["show_model"]:
-        segments += filter(None, [model_segment(data)])
-    if CONFIG["show_output_style"]:
-        segments += filter(None, [output_style_segment(data)])
-    if CONFIG["show_memory"]:
-        segments += filter(None, [memory_segment()])
-    if CONFIG["show_git"]:
-        segments += filter(None, [git_segment(data)])
-    if CONFIG["show_agent"]:
-        segments += filter(None, [agent_segment(data)])
-    if CONFIG["show_account"]:
-        segments += filter(None, [account_segment()])
+    for name in field_order(CONFIG["order"]):
+        if CONFIG[f"show_{name}"]:
+            segments += filter(None, FIELDS[name](data))
 
     if not segments:
         return ""  # nothing known yet — print nothing rather than an empty shell
