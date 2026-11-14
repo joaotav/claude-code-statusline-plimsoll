@@ -353,12 +353,12 @@ class CacheTest(unittest.TestCase):
     def test_a_cold_cache_sits_after_the_context(self):
         with environment(git=GIT):
             line = run_main(cache())
-        self.assertIn("• 16k/200k 8% • cold 152k to rebuild • Opus 5.5", line)
+        self.assertIn("• 16k/200k 8% • Cold (152k) • Opus 5.5", line)
 
     def test_a_passed_expiry_counts_as_cold(self):
         with environment():
             seg = statusline.cache_segment(cache(warm=True, expires_at=epoch(seconds=-1)))
-        self.assertEqual(seg[1][-1], "cold 152k")
+        self.assertEqual(seg[1][-1], "Cold (152k)")
 
     def test_a_small_rebuild_is_hidden(self):
         with environment():
@@ -374,16 +374,19 @@ class CacheTest(unittest.TestCase):
             with self.subTest(data.get("prompt_cache")), environment():
                 self.assertIsNone(statusline.cache_segment(data))
 
-    def test_icon_replaces_the_word(self):
+    def test_the_same_with_icons(self):
         with environment(icons=True):
             seg = statusline.cache_segment(cache())
-        self.assertEqual(seg, (1, [f"{statusline.ICONS['cache']} 152k to rebuild", f"{statusline.ICONS['cache']} 152k"]))
+        self.assertEqual(seg, (1, ["Cold (152k)"]))
 
-    def test_sheds_the_words_first_and_drops_before_the_directory(self):
+    def test_the_word_is_light_blue(self):
+        with environment(colour=True):
+            seg = statusline.cache_segment(cache())
+        self.assertEqual(seg[1][0], f"{statusline.LIGHT_BLUE}Cold{statusline.RESET} (152k)")
+
+    def test_drops_before_the_directory(self):
         with environment(git=GIT, account=ACCOUNT, memory=MEMORY):
             lines = [run_main(cache(), columns=w) for w in range(250, 19, -1)]
-        short = next(line for line in lines if "to rebuild" not in line)
-        self.assertNotIn("[14:00]", short)  # the reset times went with it
         gone = next(line for line in lines if "152k" not in line)
         self.assertNotIn("Opus", gone)
         self.assertIn("demo", gone)

@@ -97,7 +97,6 @@ ICONS = {
     "worktree": "\uf126",  # nf-fa-code_fork
     "fast": "\uf0e7",  # nf-fa-bolt
     "style": "\uf1fc",  # nf-fa-paint_brush
-    "cache": "\uf2dc",  # nf-fa-snowflake_o
 }
 
 # What `icons: False` shows instead; a missing key means no label at all.
@@ -109,14 +108,14 @@ TEXT_LABELS = {
     "worktree": "worktree",
     "fast": "fast",
     "style": "style",
-    "cache": "cold",
 }
 
-GREEN, YELLOW, RED, BLUE, MAGENTA, CYAN, DIM, RESET = (
+GREEN, YELLOW, RED, BLUE, LIGHT_BLUE, MAGENTA, CYAN, DIM, RESET = (
     "\033[32m",
     "\033[33m",
     "\033[31m",
     "\033[34m",
+    "\033[94m",
     "\033[35m",
     "\033[36m",
     "\033[2m",
@@ -477,8 +476,7 @@ def cache_segment(data: dict) -> tuple[int, list[str]] | None:
     expired = isinstance(expires, (int, float)) and expires <= datetime.now().timestamp()
     if cache.get("warm") is not False and not expired:
         return None
-    amount = paint(fmt_tokens_whole(tokens), YELLOW)
-    return (1, at_stage(1, labelled("cache", f"{amount} to rebuild"), labelled("cache", amount)))
+    return (1, [f"{paint('Cold', LIGHT_BLUE)} ({fmt_tokens_whole(tokens)})"])
 
 
 def model_segment(data: dict) -> tuple[int, list[str]] | None:

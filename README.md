@@ -108,7 +108,7 @@ in the clone. Your settings live outside it.
 | Weekly limit | `7d 41.2% [Thu 14:00]` | Share used, and when it resets |
 | Cost | `$1.23` | What the session has cost, with an API key only |
 | Context | `477k/1M 48%` | How full the context window is |
-| Cold cache | `cold 152k to rebuild` | Tokens the next message will send again, once the cache has expired and the context is big. Claude Code v2.1.251 or later |
+| Cold cache | `Cold (152k)` | Tokens the next message will send again, once the cache has expired and the context is big. Claude Code v2.1.251 or later |
 | Model | `Opus 5.5 (high) fast` | Model and effort level, and `fast` (a bolt with icons) in fast mode |
 | Output style | `style Explanatory` | The output style, when it isn't the default |
 | Memory | `7.6GB/14.8GB` | System RAM in use, as `free -h` counts it |
@@ -229,7 +229,7 @@ Dropping, at shrinking widths:
 Once there's no room left, both modes shed in the same order, wherever the
 fields sit. Detail goes first:
 
-1. The reset times, and "to rebuild" after a cold cache
+1. The reset times
 2. The context percentage
 3. The full path, leaving the folder name
 4. The git symbols
