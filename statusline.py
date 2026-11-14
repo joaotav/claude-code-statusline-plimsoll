@@ -790,13 +790,8 @@ def load_settings() -> None:
             CONFIG[key] = value
 
 
-def main() -> None:
-    load_settings()
-    raw = sys.stdin.read()
-    data = json.loads(raw) if raw.strip() else {}
-    if not isinstance(data, dict):
-        data = {}
-
+def render(data: dict, width: int) -> str:
+    """The line for `data` at `width` columns; empty when nothing is known."""
     # Priority decides what drops when even the sparsest variants overflow:
     # highest number first, so account, output style, agent, memory, git,
     # model and cwd; quota, cost and context (priority 0) never drop.
@@ -823,8 +818,17 @@ def main() -> None:
         segments += filter(None, [account_segment()])
 
     if not segments:
-        return  # nothing known yet — print nothing rather than an empty shell
-    lines = fit(segments, terminal_width(), max(1, CONFIG["max_lines"]))
+        return ""  # nothing known yet — print nothing rather than an empty shell
+    return fit(segments, width, max(1, CONFIG["max_lines"]))
+
+
+def main() -> None:
+    load_settings()
+    raw = sys.stdin.read()
+    data = json.loads(raw) if raw.strip() else {}
+    if not isinstance(data, dict):
+        data = {}
+    lines = render(data, terminal_width())
     if lines:
         print(lines)
 
