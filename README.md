@@ -128,8 +128,18 @@ cd ~/claude-code-statusline-plimsoll
 python3 scripts/make-fixtures.py > /dev/null && ./statusline.py < fixtures/full.json
 ```
 
-The last line renders a sample so you can check it works. Then point Claude
-Code at the script:
+The last line renders a sample so you can check it works. Then choose what
+the line shows:
+
+```sh
+python3 scripts/setup.py
+```
+
+This opens a screen with a live preview, drawn from your own directory, git
+and account. Arrow keys move, space or ←→ change a setting, and `s` saves.
+`[` and `]` narrow and widen the preview, to see how the line fits a smaller
+window. When you save, it offers to point Claude Code at the script, if that
+isn't done yet. You can also do that step on its own:
 
 ```sh
 python3 scripts/install.py
@@ -161,10 +171,16 @@ run `git pull`. To change what the line shows, see
 
 ## Configuration
 
+Run `python3 scripts/setup.py` whenever you want to change what the line
+shows. It opens on your current settings, and Claude Code picks up the
+change at its next refresh.
+
 Settings go in `plimsoll-status-line-config.json`, in Claude's config
-folder: `~/.claude`, or the folder `CLAUDE_CONFIG_DIR` names. The script
-never creates it, so make it when you want to change something, and list
-only the keys you change. For example, the minimal line without the account:
+folder: `~/.claude`, or the folder `CLAUDE_CONFIG_DIR` names. The status
+line never creates it. Setup writes it when you save something other than
+the defaults, with only the keys you changed, and keeps any others already
+there. You can also write it by hand. For example, the minimal line without
+the account:
 
 ```json
 {
