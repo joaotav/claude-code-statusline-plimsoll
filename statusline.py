@@ -38,6 +38,9 @@ CONFIG = {
     # API-price estimate, not a bill.
     "show_cost": True,
     "show_context": True,
+    # A cold prompt cache, when the next message would rebuild enough of it
+    # to matter.
+    "show_cache": True,
     "show_model": True,
     # The output style, unless it's the default one.
     "show_output_style": True,
@@ -59,6 +62,8 @@ CONFIG = {
     # Colour thresholds, as percent used.
     "warn_at": 60.0,
     "crit_at": 85.0,
+    # Tokens a cold cache must have to rebuild before it's shown.
+    "cold_cache_tokens": 50000,
     "colour": True,
     # Nerd Font glyphs instead of text labels. Turn off in a terminal whose
     # font lacks them, or they draw as boxes.
@@ -89,6 +94,7 @@ ICONS = {
     "worktree": "\uf126",  # nf-fa-code_fork
     "fast": "\uf0e7",  # nf-fa-bolt
     "style": "\uf1fc",  # nf-fa-paint_brush
+    "cache": "\uf2dc",  # nf-fa-snowflake_o
 }
 
 # What `icons: False` shows instead; a missing key means no label at all.
@@ -100,6 +106,7 @@ TEXT_LABELS = {
     "worktree": "worktree",
     "fast": "fast",
     "style": "style",
+    "cache": "cold",
 }
 
 GREEN, YELLOW, RED, BLUE, MAGENTA, CYAN, DIM, RESET = (
@@ -451,6 +458,26 @@ def context_segments(data: dict) -> list[tuple[int, list[str]]]:
     return segs
 
 
+def cache_segment(data: dict) -> tuple[int, list[str]] | None:
+    """Tokens the next message would rebuild, once the prompt cache is cold:
+    it sends the whole conversation again at full price. Claude Code re-runs
+    us when the cache expires, so this appears on time."""
+    cache = data.get("prompt_cache")
+    if not isinstance(cache, dict):
+        return None
+    tokens = cache.get("recache_tokens_if_cold")
+    if isinstance(tokens, bool) or not isinstance(tokens, (int, float)):
+        return None
+    if tokens < CONFIG["cold_cache_tokens"]:
+        return None  # cheap to rebuild, so not worth the room
+    expires = cache.get("expires_at")
+    expired = isinstance(expires, (int, float)) and expires <= datetime.now().timestamp()
+    if cache.get("warm") is not False and not expired:
+        return None
+    amount = paint(fmt_tokens_whole(tokens), YELLOW)
+    return (1, at_stage(1, labelled("cache", f"{amount} to rebuild"), labelled("cache", amount)))
+
+
 def model_segment(data: dict) -> tuple[int, list[str]] | None:
     name = dig(data, "model", "display_name") or dig(data, "model", "id")
     if not isinstance(name, str) or not name:
@@ -794,7 +821,8 @@ def render(data: dict, width: int) -> str:
     """The line for `data` at `width` columns; empty when nothing is known."""
     # Priority decides what drops when even the sparsest variants overflow:
     # highest number first, so account, output style, agent, memory, git,
-    # model and cwd; quota, cost and context (priority 0) never drop.
+    # model, cold cache and cwd; quota, cost and context (priority 0) never
+    # drop.
     segments: list[tuple[int, list[str]]] = []
     if CONFIG["show_cwd"]:
         segments += filter(None, [cwd_segment(data)])
@@ -804,6 +832,8 @@ def render(data: dict, width: int) -> str:
         segments += quota_segments(data)
     if CONFIG["show_context"]:
         segments += context_segments(data)
+    if CONFIG["show_cache"]:
+        segments += filter(None, [cache_segment(data)])
     if CONFIG["show_model"]:
         segments += filter(None, [model_segment(data)])
     if CONFIG["show_output_style"]:

@@ -9,7 +9,7 @@ from unittest import mock
 
 import statusline
 from tests.payloads import base
-from tests.support import HOME, NOW, changed, environment, porcelain, run_main, strip_ansi, untracked
+from tests.support import HOME, NOW, changed, environment, epoch, porcelain, run_main, strip_ansi, untracked
 
 GIT = porcelain(changed(".M"), untracked(), ab="+2 -0")
 ACCOUNT = "me@example.com"
@@ -312,10 +312,67 @@ class OutputStyleTest(unittest.TestCase):
             self.assertNotIn("Explanatory", run_main(payload(output_style={"name": "Explanatory"})))
 
 
+def cache(**fields) -> dict:
+    return payload(prompt_cache={"warm": False, "recache_tokens_if_cold": 152000, **fields})
+
+
+class CacheTest(unittest.TestCase):
+    def test_a_warm_cache_is_hidden(self):
+        with environment():
+            self.assertIsNone(statusline.cache_segment(payload()))
+            self.assertIsNone(statusline.cache_segment(cache(warm=True, expires_at=epoch(minutes=3))))
+
+    def test_a_cold_cache_sits_after_the_context(self):
+        with environment(git=GIT):
+            line = run_main(cache())
+        self.assertIn("• 16k/200k 8% • cold 152k to rebuild • Opus 5.5", line)
+
+    def test_a_passed_expiry_counts_as_cold(self):
+        with environment():
+            seg = statusline.cache_segment(cache(warm=True, expires_at=epoch(seconds=-1)))
+        self.assertEqual(seg[1][-1], "cold 152k")
+
+    def test_a_small_rebuild_is_hidden(self):
+        with environment():
+            self.assertIsNone(statusline.cache_segment(cache(recache_tokens_if_cold=49999)))
+            self.assertIsNotNone(statusline.cache_segment(cache(recache_tokens_if_cold=50000)))
+            with mock.patch.dict(statusline.CONFIG, {"cold_cache_tokens": 10000}):
+                self.assertIsNotNone(statusline.cache_segment(cache(recache_tokens_if_cold=20000)))
+
+    def test_missing_or_invalid_is_hidden(self):
+        absent = payload()
+        del absent["prompt_cache"]
+        for data in (absent, payload(prompt_cache=None), cache(recache_tokens_if_cold=None), cache(recache_tokens_if_cold="big")):
+            with self.subTest(data.get("prompt_cache")), environment():
+                self.assertIsNone(statusline.cache_segment(data))
+
+    def test_icon_replaces_the_word(self):
+        with environment(icons=True):
+            seg = statusline.cache_segment(cache())
+        self.assertEqual(seg, (1, [f"{statusline.ICONS['cache']} 152k to rebuild", f"{statusline.ICONS['cache']} 152k"]))
+
+    def test_sheds_the_words_first_and_drops_before_the_directory(self):
+        with environment(git=GIT, account=ACCOUNT, memory=MEMORY):
+            lines = [run_main(cache(), columns=w) for w in range(250, 19, -1)]
+        short = next(line for line in lines if "to rebuild" not in line)
+        self.assertNotIn("[14:00]", short)  # the reset times went with it
+        gone = next(line for line in lines if "152k" not in line)
+        self.assertNotIn("Opus", gone)
+        self.assertIn("demo", gone)
+
+    def test_can_be_turned_off(self):
+        with environment(), mock.patch.dict(statusline.CONFIG, {"show_cache": False}):
+            self.assertNotIn("152k", run_main(cache()))
+
+
 class LabelsAndColourTest(unittest.TestCase):
     def test_icons_replace_text_labels(self):
         data = payload(
-            agent={"name": "reviewer"}, worktree={"name": "my-feature"}, fast_mode=True, output_style={"name": "Explanatory"}
+            agent={"name": "reviewer"},
+            worktree={"name": "my-feature"},
+            fast_mode=True,
+            output_style={"name": "Explanatory"},
+            prompt_cache={"warm": False, "recache_tokens_if_cold": 152000},
         )
         with environment(icons=True, git=GIT, account=ACCOUNT, memory=MEMORY):
             line = run_main(data)

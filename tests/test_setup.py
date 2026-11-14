@@ -76,6 +76,8 @@ class PreviewTest(unittest.TestCase):
         self.assertIn("me@example.com", self.text(icons=False))
         self.assertNotIn("Opus 5.5", self.text(icons=False, show_model=False))
         self.assertIn(statusline.ICONS["model"], self.text(icons=True))
+        self.assertIn("cold 64k", self.text(icons=False))
+        self.assertNotIn("cold", self.text(icons=False, show_cache=False))
 
     def test_shows_how_a_narrow_terminal_looks(self):
         self.assertEqual(len(setup.preview(settings(icons=False), 60)), 2)
