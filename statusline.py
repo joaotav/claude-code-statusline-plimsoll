@@ -463,7 +463,7 @@ def context_segments(data: dict) -> list[tuple[int, list[str]]]:
 
 def cache_segment(data: dict) -> tuple[int, list[str]] | None:
     """Tokens the next message would rebuild, once the prompt cache is cold:
-    it sends the whole conversation again at full price. Claude Code re-runs
+    it caches the whole conversation again, above full price. Claude Code re-runs
     us when the cache expires, so this appears on time."""
     cache = data.get("prompt_cache")
     if not isinstance(cache, dict):

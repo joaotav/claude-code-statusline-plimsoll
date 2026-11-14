@@ -35,8 +35,8 @@ then red, as they fill up.
   each one resets, and how full the context window is. With an API key it
   shows the session's cost instead.
 - **A warning before an expensive message.** Once the prompt cache has
-  expired, it shows how many tokens your next message will send again at
-  full price, so you can `/compact` or `/clear` first.
+  expired, it shows how many tokens your next message will cache again, at
+  more than full price, so you can `/compact` or `/clear` first.
 - **Fits the window.** On a narrow terminal the line wraps onto a second
   row, then sheds detail in a fixed order. Usage and context never drop.
 - **Setup with a live preview.** Pick fields, icons, colour and order on
@@ -249,7 +249,9 @@ stay, and widening the window brings everything back.
 <br>
 
 The cache expires after a while without a message, 5 minutes by default,
-and the next one then sends the whole conversation again at full price. What to do depends
+and the next one then caches the whole conversation again. Cache writes
+cost 1.25 times the normal input price, or 2 times with the 1-hour cache,
+against 0.1 times or less while the cache is warm. What to do depends
 on whether you still need that conversation:
 
 - **Same task, still need it:** just send. You pay once, and the cache is
