@@ -44,6 +44,7 @@ ROWS = [
     ("  Output tokens", "show_output_tokens", "The last call's output tokens"),
     ("  Duration", "show_duration", "How long the session has run"),
     ("  Lines changed", "show_lines_changed", "Lines added and removed this session"),
+    ("Cold cache", "show_cache", "When the next message would resend a big context"),
     ("Model", "show_model", "With the effort level, and a badge in fast mode"),
     ("Output style", "show_output_style", "Only when it isn't the default one"),
     ("Memory", "show_memory", "System memory in use, out of the total"),
@@ -141,9 +142,9 @@ def sample() -> dict:
         "agent": {"name": "reviewer"},
         "cost": {"total_duration_ms": 1_380_000, "total_lines_added": 156, "total_lines_removed": 23},
         "context_window": {
-            "total_input_tokens": 15500,
+            "total_input_tokens": 64000,
             "context_window_size": 200000,
-            "used_percentage": 8,
+            "used_percentage": 32,
             "current_usage": {
                 "input_tokens": 8500,
                 "output_tokens": 1200,
@@ -151,6 +152,8 @@ def sample() -> dict:
                 "cache_read_input_tokens": 2000,
             },
         },
+        # Gone cold, as after a break, so the field has something to show.
+        "prompt_cache": {"warm": False, "recache_tokens_if_cold": 64000},
         "rate_limits": {
             "five_hour": {"used_percentage": 23.5, "resets_at": int(now + 2 * 3600)},
             "seven_day": {"used_percentage": 71.2, "resets_at": int(now + 4 * 86400)},

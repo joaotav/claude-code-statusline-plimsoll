@@ -12,6 +12,8 @@ A status line for Claude Code. It shows how close you are to your 5-hour,
 weekly and context limits, along with the directory, model, effort level,
 fast mode, output style, system memory, git state, agent and worktree, and
 logged-in account. With an API key it shows the session's cost instead of the limits.
+When the prompt cache has gone cold, it warns before your next message
+resends a big context.
 
 It's named after the Plimsoll line, the mark painted on a ship's hull that
 shows how heavily it can safely be loaded. Below the mark is safe, and past
@@ -51,6 +53,7 @@ and usage and context are never dropped.
 | Weekly limit | `7d 41.2% [Thu 14:00]` | Share used, and when it resets |
 | Cost | `$1.23` | What the session has cost, with an API key only |
 | Context | `477k/1M 48%` | How full the context window is |
+| Cold cache | `cold 152k to rebuild` | Tokens the next message will resend at full price, only once the cache has expired and the context is big. Needs Claude Code v2.1.251 or later |
 | Model | `Opus 5.5 (high) fast` | Model and effort level, and `fast` (a bolt with icons) in fast mode |
 | Output style | `style Explanatory` | The output style, only when it isn't the default |
 | Memory | `7.6GB/14.8GB` | System RAM in use, as `free -h` counts it |
@@ -205,10 +208,11 @@ the file rather than there.
 
 | Key | Default | Effect |
 |---|---|---|
-| `show_cwd`, `show_quota`, `show_cost`, `show_context`, `show_model`, `show_output_style`, `show_memory`, `show_git`, `show_agent`, `show_account` | `true` | Each field |
+| `show_cwd`, `show_quota`, `show_cost`, `show_context`, `show_cache`, `show_model`, `show_output_style`, `show_memory`, `show_git`, `show_agent`, `show_account` | `true` | Each field |
 | `icons` | `true` | Nerd Font icons. `false` gives the minimal line |
 | `colour` | `true` | Colour |
 | `warn_at`, `crit_at` | `60`, `85` | Percentages that turn yellow and red |
+| `cold_cache_tokens` | `50000` | The smallest rebuild the cold cache field shows |
 | `separator` | `" • "` | Goes between fields, drawn dim |
 | `max_lines` | `2` | `2` wraps, `1` drops. See [Narrow terminals](#narrow-terminals) |
 | `git_timeout` | `0.5` | Seconds before a slow `git status` is abandoned |
@@ -233,10 +237,11 @@ There are two ways to handle a narrow window, and one is chosen with
 | Drop | `1` | Stays on one line and sheds detail, then fields | Vertical space matters more |
 
 Once there's no room left, both modes shed in the same order. The reset
-times go first, then the context percentage, the full path, the git symbols,
-and the effort level along with the fast mode badge. After that whole fields
-go, starting with the account, then output style, agent, memory, git, model
-and directory. Quota, cost and context always stay, and widening the window
+times go first, along with the words "to rebuild" after a cold cache, then
+the context percentage, the full path, the git symbols, and the effort level
+along with the fast mode badge. After that whole fields go, starting with
+the account, then output style, agent, memory, git, model, cold cache and
+directory. Quota, cost and context always stay, and widening the window
 brings everything back.
 
 The wrap at 90 columns is in the [examples](#examples). The drop, at

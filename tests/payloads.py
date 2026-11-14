@@ -49,6 +49,12 @@ def base(now: float, cwd: str = str(ROOT)) -> dict:
             },
         },
         "exceeds_200k_tokens": False,
+        "prompt_cache": {
+            "warm": True,
+            "ttl": "5m",
+            "expires_at": int(now + 240),
+            "recache_tokens_if_cold": 15500,
+        },
         "fast_mode": False,
         "rate_limits": {
             "five_hour": {"used_percentage": 23.5, "resets_at": int(now + 2 * HOUR)},
@@ -120,6 +126,11 @@ def all_payloads(now: float, cwd: str = str(ROOT)) -> dict[str, dict]:
     f = base(now, cwd)
     f["fast_mode"] = True
     p["fast-mode"] = f
+
+    # Back after a break, with a big context: the cache has gone cold.
+    f = base(now, cwd)
+    f["prompt_cache"] = {"warm": False, "ttl": "5m", "expires_at": int(now - 60), "recache_tokens_if_cold": 152000}
+    p["cold-cache"] = f
 
     # An output style other than the default.
     f = base(now, cwd)
