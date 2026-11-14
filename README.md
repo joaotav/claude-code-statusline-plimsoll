@@ -169,6 +169,18 @@ To add the block by hand instead, use the full path to the script:
 run `git pull`. To change what the line shows, see
 [Configuration](#configuration).
 
+### Uninstall
+
+```sh
+python3 scripts/install.py --uninstall
+```
+
+This removes the `statusLine` block, but only if it runs this script, and
+backs up `settings.json` first. It then offers to delete
+`plimsoll-status-line-config.json` from the same folder. With
+`CLAUDE_CONFIG_DIR`, it only touches that folder, so a shared file in
+`~/.claude` stays for your other accounts. After that, delete the clone.
+
 ## Configuration
 
 Run `python3 scripts/setup.py` whenever you want to change what the line
