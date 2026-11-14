@@ -70,6 +70,12 @@ class SettingsFileTest(unittest.TestCase):
         self.write({"icons": "no", "max_lines": True, "separator": 3, "warn_at": "50", "show_git": 0, "crit_at": 90})
         self.assertEqual(self.loaded(), {"crit_at": 90})
 
+    def test_an_order_must_be_a_list(self):
+        self.write({"order": "git"})
+        self.assertEqual(self.loaded(), {})
+        self.write({"order": ["git"]})
+        self.assertEqual(self.loaded(), {"order": ["git"]})
+
     def test_a_whole_number_does_for_a_decimal(self):
         self.write({"warn_at": 50, "git_timeout": 1})
         self.assertEqual(self.loaded(), {"warn_at": 50, "git_timeout": 1})

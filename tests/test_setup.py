@@ -59,6 +59,47 @@ class EditorTest(unittest.TestCase):
         editor.change(1)
         self.assertEqual(editor.settings["separator"], " / ")
 
+    def test_reorder_moves_a_field_and_the_cursor_with_it(self):
+        editor = setup.Editor(settings())
+        editor.cursor = setup.KEYS.index("show_git")
+        editor.reorder(-1)
+        self.assertEqual(editor.settings["order"][:9], ["cwd", "cost", "quota", "context", "cache", "model", "output_style", "git", "memory"])
+        self.assertEqual(editor.field[1], "show_git")
+        self.assertTrue(editor.dirty)
+
+    def test_rows_under_a_field_move_with_it(self):
+        editor = setup.Editor(settings())
+        editor.cursor = setup.KEYS.index("show_duration")
+        editor.reorder(1)
+        keys = [key for _, key, _ in editor.fields]
+        self.assertEqual(keys[3:10], ["show_cache", "show_context", "show_input_tokens", "show_cache_split", "show_output_tokens", "show_duration", "show_lines_changed"])
+        self.assertEqual(editor.field[1], "show_duration")
+
+    def test_reorder_stops_at_the_ends_and_skips_the_look(self):
+        editor = setup.Editor(settings())
+        editor.reorder(-1)
+        self.assertFalse(editor.dirty)
+        editor.cursor = setup.KEYS.index("icons")
+        editor.reorder(-1)
+        self.assertFalse(editor.dirty)
+
+    def test_opens_on_a_partial_order(self):
+        editor = setup.Editor(settings(order=["git"]))
+        self.assertEqual(editor.fields[0][1], "show_git")
+        self.assertEqual(len(editor.settings["order"]), len(statusline.FIELDS))
+
+    def test_saves_the_order_only_when_moved(self):
+        editor = setup.Editor(settings(order=["git"]))
+        self.assertNotIn("order", editor.to_save())
+        editor.reorder(1)
+        self.assertEqual(editor.to_save()["order"][:2], ["cwd", "git"])
+        editor.reorder(-1)
+        self.assertNotIn("order", editor.to_save())
+        # Moved back to the usual order: no order needed.
+        usual = setup.Editor(settings(order=["cost"]))
+        usual.reorder(1)
+        self.assertEqual(usual.to_save()["order"], [])
+
     def test_names_the_option_chosen(self):
         self.assertEqual(setup.Editor(settings()).choice("max_lines"), "wrap")
         self.assertEqual(setup.Editor(settings(max_lines=1)).choice("max_lines"), "drop")

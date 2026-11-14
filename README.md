@@ -139,7 +139,8 @@ python3 scripts/setup.py
 ```
 
 This opens a screen with a live preview, drawn from your own directory, git
-and account. Arrow keys move, space or ←→ change a setting, and `s` saves.
+and account. Arrow keys move, space or ←→ change a setting, Shift+↑↓ moves
+a field up or down the line, and `s` saves.
 `[` and `]` narrow and widen the preview, to see how the line fits a smaller
 window. When you save, it offers to point Claude Code at the script, if that
 isn't done yet. You can also do that step on its own:
@@ -226,11 +227,30 @@ the file rather than there.
 | `warn_at`, `crit_at` | `60`, `85` | Percentages that turn yellow and red |
 | `cold_cache_tokens` | `50000` | The smallest rebuild the cold cache field shows |
 | `separator` | `" • "` | Goes between fields, drawn dim |
+| `order` | `[]` | Field names in the order to show them. See [Field order](#field-order) |
 | `max_lines` | `2` | `2` wraps, `1` drops. See [Narrow terminals](#narrow-terminals) |
 | `git_timeout` | `0.5` | Seconds before a slow `git status` is abandoned |
 
 `show_input_tokens`, `show_cache_split`, `show_output_tokens`,
 `show_duration` and `show_lines_changed` also exist, and are off by default.
+
+### Field order
+
+`order` lists fields by their `show_` key without the `show_`: `cwd`,
+`cost`, `quota`, `context`, `cache`, `model`, `output_style`, `memory`,
+`git`, `agent` and `account`, which is also the usual order. Fields you
+leave out follow in the usual order, so naming one moves it to the front:
+
+```json
+{
+  "order": ["git"]
+}
+```
+
+Unknown names and repeats are skipped. The context extras, such as input
+tokens and duration, stay with `context`. Moving a field doesn't change
+when it's shed on a narrow terminal: the account still goes first, wherever
+it sits.
 
 ### Icons or minimal
 
