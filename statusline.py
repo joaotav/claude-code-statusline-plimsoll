@@ -14,6 +14,7 @@ calls and reads no credentials. The only subprocess is one `git status`.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import stat
@@ -192,7 +193,8 @@ def fmt_tokens(n) -> str:
     """16700 -> '16.7k', 200000 -> '200k', 1000000 -> '1M'."""
     try:
         n = int(n)
-    except (TypeError, ValueError):
+        float(n)  # overflows for hundreds of digits, too many to scale below
+    except (TypeError, ValueError, OverflowError):
         return "—"
     if n < 1000:
         return str(n)
@@ -217,7 +219,8 @@ def fmt_tokens_whole(n) -> str:
     1250000 -> '1M'."""
     try:
         n = int(n)
-    except (TypeError, ValueError):
+        float(n)  # overflows for hundreds of digits, too many to scale below
+    except (TypeError, ValueError, OverflowError):
         return "—"
     if n < 1000:
         return str(n)
@@ -232,7 +235,7 @@ def fmt_reset(epoch) -> str | None:
         return None
     try:
         when = datetime.fromtimestamp(float(epoch))
-    except (ValueError, OverflowError, OSError):
+    except (TypeError, ValueError, OverflowError, OSError):
         return None
     now = datetime.now()
     delta_days = (when.date() - now.date()).days
@@ -246,7 +249,10 @@ def fmt_reset(epoch) -> str | None:
 def fmt_duration(ms) -> str | None:
     if not ms:
         return None
-    total = int(ms) // 1000
+    try:
+        total = int(ms) // 1000
+    except (TypeError, ValueError, OverflowError):
+        return None
     h, rem = divmod(total, 3600)
     m, s = divmod(rem, 60)
     if h:
@@ -359,7 +365,9 @@ def quota_segment(window: dict | None, key: str) -> tuple[int, list[str]] | None
         return None
     try:
         pct = float(pct)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(pct):
         return None
 
     compact = labelled(key, paint(fmt_pct(pct), colour_for(pct)) + alert(pct))
@@ -385,9 +393,9 @@ def cost_segment(data: dict) -> tuple[int, list[str]] | None:
         return None
     try:
         cost = float(dig(data, "cost", "total_cost_usd"))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
-    if cost <= 0:
+    if cost <= 0 or not math.isfinite(cost):
         return None
     # In place of the quotas an API key lacks, so never dropped either.
     return (0, [labelled("cost", f"${cost:.2f}")])
@@ -414,14 +422,19 @@ def context_segments(data: dict) -> list[tuple[int, list[str]]]:
             usage.get("cache_read_input_tokens"),
         ]
         if any(p is not None for p in parts):
-            derived = sum(p or 0 for p in parts)
-            pct = derived / float(size) * 100
-            if used is None:
-                used = derived
+            try:
+                derived = sum(p or 0 for p in parts)
+                if used is None:
+                    used = derived
+                pct = derived / float(size) * 100
+            except (TypeError, ValueError, OverflowError, ZeroDivisionError):
+                pass  # a part or the size is no number: no percentage
 
     try:
         pct = float(pct) if pct is not None else None
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        pct = None
+    if pct is not None and not math.isfinite(pct):
         pct = None
 
     # Whole numbers here: the decimals took room without changing a decision.
@@ -465,7 +478,9 @@ def detail_segments(data: dict, usage: dict) -> list[tuple[int, list[str]]]:
     if CONFIG["show_lines_changed"]:
         added = dig(data, "cost", "total_lines_added")
         removed = dig(data, "cost", "total_lines_removed")
-        if added or removed:
+        # inf or nan is no count, and must not be printed.
+        finite = not any(isinstance(n, float) and not math.isfinite(n) for n in (added, removed))
+        if (added or removed) and finite:
             segs.append((8, [f"+{added or 0}/-{removed or 0}"]))
 
     return segs
@@ -480,6 +495,8 @@ def cache_segment(data: dict) -> tuple[int, list[str]] | None:
         return None
     tokens = cache.get("recache_tokens_if_cold")
     if isinstance(tokens, bool) or not isinstance(tokens, (int, float)):
+        return None
+    if isinstance(tokens, float) and not math.isfinite(tokens):
         return None
     if tokens < CONFIG["cold_cache_tokens"]:
         return None  # cheap to rebuild, so not worth the room
