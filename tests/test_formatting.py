@@ -52,6 +52,19 @@ class FmtTokensWholeTest(unittest.TestCase):
 
 
 class ContextFieldTest(unittest.TestCase):
+    # Each part different, so a part left out or added changes the sum.
+    USAGE = {
+        "input_tokens": 20000,
+        "cache_creation_input_tokens": 30000,
+        "cache_read_input_tokens": 50000,
+        "output_tokens": 40000,
+    }
+
+    def variants(self, **ctx):
+        with environment():
+            segs = statusline.context_segments({"context_window": ctx})
+        return segs[0][1] if segs else None
+
     def test_percentage_is_whole(self):
         data = {"context_window": {"context_window_size": 200000, "total_input_tokens": 15500, "used_percentage": 7.8}}
         with environment():
@@ -65,6 +78,37 @@ class ContextFieldTest(unittest.TestCase):
             variants = statusline.context_segments(data)[0][1]
         self.assertEqual(variants[0], "190k/200k 95% ⚠")
         self.assertEqual(variants[-1], "190k/200k ⚠")
+
+    def test_a_missing_percentage_is_derived_from_the_input_tokens(self):
+        # (20k + 30k + 50k) / 200k; output tokens don't fill the window.
+        variants = self.variants(context_window_size=200000, used_percentage=None, current_usage=self.USAGE)
+        self.assertEqual(variants[0], "100k/200k 50%")
+
+    def test_a_missing_part_counts_as_zero(self):
+        usage = dict(self.USAGE, cache_read_input_tokens=None)
+        variants = self.variants(context_window_size=200000, used_percentage=None, current_usage=usage)
+        self.assertEqual(variants[0], "50k/200k 25%")
+
+    def test_the_derived_count_stands_in_only_for_a_missing_total(self):
+        ctx = {"context_window_size": 200000, "used_percentage": None, "current_usage": self.USAGE}
+        self.assertEqual(self.variants(total_input_tokens=123456, **ctx)[0], "123k/200k 50%")
+
+    def test_a_given_percentage_is_not_derived(self):
+        ctx = {"context_window_size": 200000, "total_input_tokens": 15500, "current_usage": self.USAGE}
+        self.assertEqual(self.variants(used_percentage=8, **ctx)[0], "16k/200k 8%")
+
+    def test_no_usage_and_no_percentage_shows_the_counts_alone(self):
+        ctx = {"context_window_size": 200000, "total_input_tokens": 15500}
+        self.assertEqual(self.variants(used_percentage=None, current_usage=None, **ctx), ["16k/200k"])
+
+    def test_one_unknown_side_is_a_dash(self):
+        # Without a window size there is nothing to derive a percentage from.
+        no_size = self.variants(total_input_tokens=15500, used_percentage=None, current_usage=self.USAGE)
+        self.assertEqual(no_size, ["16k/—"])
+        self.assertEqual(self.variants(context_window_size=200000), ["—/200k"])
+
+    def test_both_unknown_hides_the_field(self):
+        self.assertIsNone(self.variants(used_percentage=None))
 
 
 class AlertTest(unittest.TestCase):
