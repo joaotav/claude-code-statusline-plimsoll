@@ -215,6 +215,10 @@ class RealRepoTest(unittest.TestCase):
 
     def setUp(self):
         self.dir = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        # Git exports GIT_DIR and the like to hooks. Inherited, they would aim
+        # every git command here, and the git status under test, at another repo.
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        self.enterContext(mock.patch.dict(os.environ, env, clear=True))
         self.repo = self.dir / "demo"
         self.repo.mkdir()
         subprocess.run(["git", "init", "-q", "-b", "main", str(self.repo)], check=True)
