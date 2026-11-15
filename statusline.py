@@ -17,7 +17,6 @@ import json
 import os
 import re
 import stat
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -505,22 +504,30 @@ def output_style_segment(data: dict) -> tuple[int, list[str]] | None:
     return (5, [labelled("style", printable(name))])
 
 
-def git_status(path: str) -> str | None:
-    """`git status` porcelain v2 output, or None outside a repo or on any failure."""
+def run(command: list[str], **kwargs) -> str | None:
+    """The command's output, or None when it fails or outlasts git_timeout."""
+    # Imported here: it takes longer to load than the rest of the script to
+    # run, and outside a repo on Linux nothing needs it.
+    import subprocess
+
     try:
-        out = subprocess.run(
-            # A repo's own .git/config could name a command to run as its
-            # fsmonitor; never run it.
-            ["git", "-C", path, "-c", "core.fsmonitor=false", "status", "--porcelain=v2", "--branch"],
-            capture_output=True,
-            text=True,
-            timeout=CONFIG["git_timeout"],
-            # Read-only: don't take the index lock Claude's own git calls need.
-            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
-        )
+        out = subprocess.run(command, capture_output=True, text=True, timeout=CONFIG["git_timeout"], **kwargs)
     except (OSError, subprocess.SubprocessError):
         return None
     return out.stdout if out.returncode == 0 else None
+
+
+def git_status(path: str) -> str | None:
+    """`git status` porcelain v2 output, or None outside a repo or on any failure."""
+    if git_dirs(path) is None:
+        return None  # no .git above here, so git would only say so
+    return run(
+        # A repo's own .git/config could name a command to run as its
+        # fsmonitor; never run it.
+        ["git", "-C", path, "-c", "core.fsmonitor=false", "status", "--porcelain=v2", "--branch"],
+        # Read-only: don't take the index lock Claude's own git calls need.
+        env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+    )
 
 
 def read_capped(path: Path, limit: int = 4096) -> str | None:
@@ -747,9 +754,9 @@ def memory_reading() -> tuple[int, int] | None:
             return parse_meminfo(Path("/proc/meminfo").read_text())
         if sys.platform == "darwin":
             total = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
-            out = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=CONFIG["git_timeout"])
-            return parse_vm_stat(out.stdout, total) if out.returncode == 0 else None
-    except (OSError, ValueError, subprocess.SubprocessError):
+            out = run(["vm_stat"])
+            return parse_vm_stat(out, total) if out is not None else None
+    except (OSError, ValueError):
         pass
     return None
 
