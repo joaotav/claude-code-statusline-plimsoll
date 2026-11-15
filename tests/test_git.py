@@ -218,6 +218,9 @@ class RealRepoTest(unittest.TestCase):
         # Git exports GIT_DIR and the like to hooks. Inherited, they would aim
         # every git command here, and the git status under test, at another repo.
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        # Nor may the user's or the system's git config (signed commits, say)
+        # change what they do. HOME, as git before 2.32 has no GIT_CONFIG_GLOBAL.
+        env.update(HOME=str(self.dir), XDG_CONFIG_HOME=str(self.dir), GIT_CONFIG_NOSYSTEM="1")
         self.enterContext(mock.patch.dict(os.environ, env, clear=True))
         self.repo = self.dir / "demo"
         self.repo.mkdir()
