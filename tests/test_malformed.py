@@ -221,5 +221,11 @@ class RepairedFieldTest(unittest.TestCase):
                 self.assertIsNone(statusline.cache_segment(data))
 
 
+class NulInPathTest(unittest.TestCase):
+    def test_a_nul_in_the_directory_hides_git(self):
+        # The real git_status, which environment() stubs out; git never runs.
+        self.assertIsNone(statusline.git_status(f"{HOME}/a\0b"))
+
+
 if __name__ == "__main__":
     unittest.main()

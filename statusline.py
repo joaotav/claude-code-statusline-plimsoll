@@ -548,8 +548,11 @@ def run(command: list[str], **kwargs) -> str | None:
 
 def git_status(path: str) -> str | None:
     """`git status` porcelain v2 output, or None outside a repo or on any failure."""
-    if git_dirs(path) is None:
-        return None  # no .git above here, so git would only say so
+    try:
+        if git_dirs(path) is None:
+            return None  # no .git above here, so git would only say so
+    except ValueError:
+        return None  # a NUL in the path, which no directory has
     return run(
         # A repo's own .git/config could name a command to run as its
         # fsmonitor; never run it.
