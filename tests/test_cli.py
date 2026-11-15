@@ -17,14 +17,15 @@ SCRIPT = ROOT / "statusline.py"
 
 
 def run(stdin: str, columns: int = 120) -> subprocess.CompletedProcess:
-    # An empty config dir, so the developer's own login never shows up here.
+    # An empty config dir and home, so the developer's own login and settings
+    # (read from ~/.claude when the config dir has none) never show up here.
     with tempfile.TemporaryDirectory() as config_dir:
         return subprocess.run(
             [sys.executable, str(SCRIPT)],
             input=stdin,
             capture_output=True,
             text=True,
-            env={**os.environ, "COLUMNS": str(columns), "CLAUDE_CONFIG_DIR": config_dir},
+            env={**os.environ, "COLUMNS": str(columns), "CLAUDE_CONFIG_DIR": config_dir, "HOME": config_dir},
             timeout=10,
         )
 
