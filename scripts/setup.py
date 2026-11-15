@@ -18,7 +18,6 @@ import curses
 import json
 import os
 import re
-import shutil
 import sys
 import time
 from pathlib import Path
@@ -80,25 +79,13 @@ COLOURS = {
 
 def settings_path() -> Path:
     """The file the status line reads, or where a new one goes."""
-    found = statusline.config_file()
-    if found is not None:
-        return found
-    config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
-    return (Path(config_dir) if config_dir else Path.home() / ".claude") / statusline.CONFIG_FILE
+    return statusline.config_file() or statusline.config_dir() / statusline.CONFIG_FILE
 
 
 def read_file(path: Path) -> dict:
     """The file's settings as they stand, to keep the keys setup doesn't
     manage. Exits on a broken file rather than write over it."""
-    if not path.exists():
-        return {}
-    try:
-        settings = json.loads(path.read_text(encoding="utf-8"))
-    except ValueError as e:
-        sys.exit(f"{path} isn't valid JSON ({e}). Fix it or delete it, then run this again.")
-    if not isinstance(settings, dict):
-        sys.exit(f"{path} doesn't hold a JSON object. Fix it or delete it, then run this again.")
-    return settings
+    return install.load(path, "Fix it or delete it, then run this again.")[0]
 
 
 def save(path: Path, current: dict, settings: dict) -> bool:
@@ -115,11 +102,7 @@ def save(path: Path, current: dict, settings: dict) -> bool:
     # A settings file linked from a dotfiles repo stays a link: write its target.
     path = path.resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.tmp")
-    tmp.write_text(json.dumps(new, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    if path.exists():
-        shutil.copymode(path, tmp)
-    os.replace(tmp, path)
+    install.write_json(path, new)
     return True
 
 

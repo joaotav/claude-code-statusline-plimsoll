@@ -23,14 +23,13 @@ from pathlib import Path
 SCRIPT = Path(__file__).resolve().parent.parent / "statusline.py"
 sys.path.insert(0, str(SCRIPT.parent))
 
-from statusline import CONFIG_FILE  # noqa: E402
+from statusline import CONFIG_FILE, config_dir  # noqa: E402
 
 
 def settings_path() -> Path:
     # Each config folder has its own settings.json, as it has its own
     # .claude.json.
-    config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
-    return (Path(config_dir) if config_dir else Path.home() / ".claude") / "settings.json"
+    return config_dir() / "settings.json"
 
 
 def status_line() -> dict:
@@ -44,19 +43,29 @@ def confirm(question: str) -> bool:
         return False
 
 
-def load(path: Path) -> tuple[dict, str | None]:
+def load(path: Path, fix: str = "Fix it, or edit the block by hand.") -> tuple[dict, str | None]:
     """The settings at `path` and the file's text, None when there's no file.
-    Exits on a file that isn't a JSON object."""
+    Exits on a file that isn't a JSON object, saying `fix`."""
     if not path.exists():
         return {}, None
-    text = path.read_text(encoding="utf-8")
     try:
+        text = path.read_text(encoding="utf-8")
         settings = json.loads(text) if text.strip() else {}
     except ValueError as e:
-        sys.exit(f"{path} isn't valid JSON ({e}). Fix it, or edit the block by hand.")
+        sys.exit(f"{path} isn't valid JSON ({e}). {fix}")
     if not isinstance(settings, dict):
-        sys.exit(f"{path} doesn't hold a JSON object. Fix it, or edit the block by hand.")
+        sys.exit(f"{path} doesn't hold a JSON object. {fix}")
     return settings, text
+
+
+def write_json(path: Path, obj) -> None:
+    """Write `obj` to `path` as JSON, keeping the mode of the file it replaces."""
+    # Written beside it and renamed over it, so a crash can't leave it half-written.
+    tmp = path.with_name(f".{path.name}.tmp")
+    tmp.write_text(json.dumps(obj, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if path.exists():
+        shutil.copymode(path, tmp)
+    os.replace(tmp, path)
 
 
 def save(path: Path, settings: dict, text: str | None) -> None:
@@ -65,12 +74,7 @@ def save(path: Path, settings: dict, text: str | None) -> None:
         backup = path.with_name(f"{path.name}.bak.{int(time.time())}")
         shutil.copy2(path, backup)
         print(f"Backed up the old settings to {backup}.")
-    # Written beside it and renamed over it, so a crash can't leave it half-written.
-    tmp = path.with_name(f".{path.name}.tmp")
-    tmp.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    if text is not None:
-        shutil.copymode(path, tmp)
-    os.replace(tmp, path)
+    write_json(path, settings)
 
 
 def install(path: Path, ask=confirm) -> bool:

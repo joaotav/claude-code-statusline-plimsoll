@@ -175,6 +175,8 @@ class SaveTest(unittest.TestCase):
     def test_refuses_a_broken_file(self):
         self.assertEqual(setup.read_file(self.path), {})
         self.path.parent.mkdir()
+        self.path.write_text(" \n")
+        self.assertEqual(setup.read_file(self.path), {})
         for text in ("{nope", "[]"):
             self.path.write_text(text)
             with self.assertRaises(SystemExit):
