@@ -8,11 +8,17 @@ import json
 import os
 import re
 import sys
+import time
 from contextlib import ExitStack, redirect_stdout
 from datetime import datetime, timedelta
 from unittest import mock
 
 import statusline
+
+# Times show in local time, and the days after NOW cross a clock change in
+# some zones (the US's, on 1 Nov): pin the zone, or a reset's hour moves.
+os.environ["TZ"] = "UTC"
+time.tzset()
 
 # A Wednesday at noon: far enough from midnight that +2h stays the same day.
 NOW = datetime(2026, 10, 28, 12, 0)
