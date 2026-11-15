@@ -150,9 +150,14 @@ def paint(text: str, code: str) -> str:
     return f"{code}{text}{RESET}" if use_colour() else text
 
 
+def label_for(key: str) -> str:
+    """The segment's icon, or its text label as fallback; '' for none."""
+    return ICONS[key] if CONFIG["icons"] else TEXT_LABELS.get(key, "")
+
+
 def labelled(key: str, text: str) -> str:
-    """Prefix `text` with the segment's icon, or its text label as fallback."""
-    label = ICONS[key] if CONFIG["icons"] else TEXT_LABELS.get(key, "")
+    """Prefix `text` with the segment's label."""
+    label = label_for(key)
     return f"{label} {text}" if label else text
 
 
@@ -177,6 +182,12 @@ def alert(pct: float) -> str:
     return paint(" ⚠", RED) if pct >= CONFIG["crit_at"] else ""
 
 
+def trim(v: float, digits: int = 1) -> str:
+    """`digits` decimals, but none when they add nothing (23.0 -> '23')."""
+    whole, _, frac = f"{v:.{digits}f}".partition(".")
+    return f"{whole}.{frac}" if frac.strip("0") else whole
+
+
 def fmt_tokens(n) -> str:
     """16700 -> '16.7k', 200000 -> '200k', 1000000 -> '1M'."""
     try:
@@ -186,15 +197,13 @@ def fmt_tokens(n) -> str:
     if n < 1000:
         return str(n)
     if n < 1_000_000:
-        v = n / 1000
-        return f"{v:.0f}k" if abs(v - round(v)) < 0.05 else f"{v:.1f}k"
-    v = n / 1_000_000
-    return f"{v:.0f}M" if abs(v - round(v)) < 0.005 else f"{v:.2f}M"
+        return f"{trim(n / 1000)}k"
+    return f"{trim(n / 1_000_000, 2)}M"
 
 
 def fmt_pct(pct: float) -> str:
     """One decimal, but drop it when it adds nothing (23.0% -> 23%)."""
-    return f"{pct:.0f}%" if abs(pct - round(pct)) < 0.05 else f"{pct:.1f}%"
+    return f"{trim(pct)}%"
 
 
 def half_up(x: float) -> int:
@@ -288,7 +297,8 @@ def fit(segments: list[tuple[int, list[str]]], width: int, max_lines: int = 1) -
         return "\n".join(lines[: max_lines - 1] + [sep.join(lines[max_lines - 1 :])])
 
     depth = max((len(v) for _, v in segments), default=1)
-    for level in range(depth):
+    # The sparsest level is the first try below.
+    for level in range(depth - 1):
         lines, fits = attempt(segments, level)
         if fits:
             return "\n".join(lines)
@@ -360,16 +370,11 @@ def quota_segment(window: dict | None, key: str) -> tuple[int, list[str]] | None
     return (0, variants)
 
 
-def quota_segments(data: dict) -> list[tuple[int, list[str]]]:
+def quota_segments(data: dict) -> list[tuple[int, list[str]] | None]:
     limits = data.get("rate_limits")
     if not isinstance(limits, dict):
         return []
-    segs = []
-    for key in ("five_hour", "seven_day"):
-        seg = quota_segment(limits.get(key), key)
-        if seg:
-            segs.append(seg)
-    return segs
+    return [quota_segment(limits.get(key), key) for key in ("five_hour", "seven_day")]
 
 
 def cost_segment(data: dict) -> tuple[int, list[str]] | None:
@@ -431,6 +436,13 @@ def context_segments(data: dict) -> list[tuple[int, list[str]]]:
             variants = at_stage(2, f"{full} {shown}{alert(pct)}", full + alert(pct))
         segs.append((0, variants))
 
+    return segs + detail_segments(data, usage)
+
+
+def detail_segments(data: dict, usage: dict) -> list[tuple[int, list[str]]]:
+    """The context field's optional details: the last call's tokens, then the
+    session's duration and lines changed."""
+    segs: list[tuple[int, list[str]]] = []
     if CONFIG["show_input_tokens"] and usage.get("input_tokens") is not None:
         short = f"in {fmt_tokens(usage['input_tokens'])}"
         variants = [short]
@@ -490,7 +502,7 @@ def model_segment(data: dict) -> tuple[int, list[str]] | None:
         rich += f" ({effort})"
     # Fast mode spends the usage limits sooner. Sheds with the effort level.
     if data.get("fast_mode") is True:
-        rich += " " + (ICONS["fast"] if CONFIG["icons"] else TEXT_LABELS["fast"])
+        rich += " " + label_for("fast")
     return (2, at_stage(5, rich, short) if rich != short else [short])
 
 
@@ -635,11 +647,10 @@ def git_segment(data: dict) -> tuple[int, list[str]] | None:
             ahead, behind = int(a[1:]), int(b[1:])
         elif line.startswith("? "):
             untracked += 1
-        elif line[:2] in ("1 ", "2 ", "u "):
+        elif line.startswith("u "):
+            conflicted += 1  # whatever each side did, it waits on you
+        elif line[:2] in ("1 ", "2 "):
             # XY: index (staged) status, then worktree status; '.' is unchanged.
-            if line[0] == "u":
-                conflicted += 1  # whatever each side did, it waits on you
-                continue
             x, y = line[2], line[3]
             if "D" in (x, y):
                 deleted += 1
@@ -718,7 +729,7 @@ def fmt_size(n: int) -> str:
     gib = n / 2**30
     if gib < 1:
         return f"{n / 2**20:.0f}MB"
-    return f"{gib:.0f}GB" if abs(gib - round(gib)) < 0.05 else f"{gib:.1f}GB"
+    return f"{trim(gib)}GB"
 
 
 def parse_meminfo(text: str) -> tuple[int, int] | None:
@@ -786,12 +797,16 @@ def terminal_width() -> int:
         return CONFIG["fallback_width"]
 
 
+def config_dir() -> Path:
+    """Claude's active config folder: CLAUDE_CONFIG_DIR, else ~/.claude."""
+    folder = os.environ.get("CLAUDE_CONFIG_DIR")
+    return Path(folder) if folder else Path.home() / ".claude"
+
+
 def config_file() -> Path | None:
     """The user's settings: in the active config dir, else in ~/.claude, so
     one file covers every account and an account can still have its own."""
-    default = Path.home() / ".claude"
-    config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
-    for folder in (Path(config_dir), default) if config_dir else (default,):
+    for folder in (config_dir(), Path.home() / ".claude"):
         if (folder / CONFIG_FILE).is_file():
             return folder / CONFIG_FILE
     return None
