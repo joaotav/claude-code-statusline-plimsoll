@@ -297,7 +297,7 @@ the `statusLine` block: `python3 scripts/install.py` adds it, or says it's
 already there. To test the script on its own, render a sample:
 
 ```sh
-python3 scripts/make-fixtures.py > /dev/null && ./statusline.py < fixtures/full.json
+python3 scripts/make_fixtures.py > /dev/null && ./statusline.py < fixtures/full.json
 ```
 
 </details>
@@ -384,9 +384,9 @@ fields off before sharing your screen.
 ```sh
 python3 -m unittest discover -s tests -t .   # tests, Python 3.11+
 ./scripts/run-fixtures.sh                    # render every sample input
-python3 scripts/make-screenshots.py          # README images, needs Pillow and a Nerd Font
-python3 scripts/make-banner.py               # the banner, also needs Space Grotesk and Inter
-python3 scripts/make-setup-gif.py            # the setup GIF, also needs tmux
+python3 scripts/make_screenshots.py          # README images, needs Pillow and a Nerd Font
+python3 scripts/make_banner.py               # the banner, also needs Space Grotesk and Inter
+python3 scripts/make_setup_gif.py            # the setup GIF, also needs tmux
 ```
 
 The tests freeze the clock and stub git, and a few run real git and read

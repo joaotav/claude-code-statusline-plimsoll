@@ -6,7 +6,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-python3 scripts/make-fixtures.py >/dev/null
+python3 scripts/make_fixtures.py >/dev/null
 
 fail=0
 for f in fixtures/*.json; do

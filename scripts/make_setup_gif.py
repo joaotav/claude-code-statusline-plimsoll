@@ -6,11 +6,10 @@ do, so the clock is frozen and the directory, repository, account and
 memory are made up. It presses a fixed run of keys and draws each screen.
 Needs tmux, Pillow and a Nerd Font:
 
-    python3 scripts/make-setup-gif.py [--font /path/to/NerdFontMono.ttf]
+    python3 scripts/make_setup_gif.py [--font /path/to/NerdFontMono.ttf]
 """
 
 import argparse
-import importlib.util
 import os
 import re
 import shlex
@@ -26,15 +25,7 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-
-def load(name: str, file: str):
-    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / file)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-shots = load("make_screenshots", "make-screenshots.py")
+import make_screenshots as shots  # noqa: E402
 
 OUT = ROOT / "docs" / "setup.gif"
 SESSION = "plimsoll-setup-gif"
@@ -66,9 +57,9 @@ STEPS = [
 
 def screen() -> None:
     """The setup screen under the stubs; runs inside tmux."""
+    import setup
     from tests.support import HOME, NOW, changed, environment, porcelain, untracked
 
-    setup = load("setup_screen", "setup.py")
     os.environ.pop("CLAUDE_CONFIG_DIR", None)
     git = porcelain(changed(".M"), untracked(), ab="+2 -0")
     with ExitStack() as stack:
@@ -206,17 +197,13 @@ def save(images: list[Image.Image], durations: list[int]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--font", help="a Nerd Font Mono .ttf (default: JetBrainsMono via fc-match)")
+    parser = shots.arguments(__doc__)
     parser.add_argument("--screen", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.screen:
         return screen()
-    font_path = args.font or shots.default_font()
-    if "Nerd" not in font_path:
-        sys.exit(f"no Nerd Font found (got {font_path!r}); pass one with --font")
 
-    pen = Pen(font_path)
+    pen = Pen(shots.nerd_font(args.font))
     frames = record()
     save([pen.draw(text, label) for text, label, _ in frames], [ms for _, _, ms in frames])
     print(f"wrote {OUT.relative_to(ROOT)}, {len(frames)} frames, {OUT.stat().st_size // 1024} KB")

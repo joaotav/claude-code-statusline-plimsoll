@@ -7,11 +7,9 @@ the script's real output for a made-up session, rendered through the tests'
 stubs as the screenshots are. Needs Pillow, a Nerd Font, Space Grotesk and
 Inter:
 
-    python3 scripts/make-banner.py [--font /path/to/NerdFontMono.ttf]
+    python3 scripts/make_banner.py [--font /path/to/NerdFontMono.ttf]
 """
 
-import argparse
-import importlib.util
 import subprocess
 import sys
 from pathlib import Path
@@ -25,9 +23,7 @@ from tests.payloads import base  # noqa: E402
 from tests.support import HOME, NOW, changed, environment, porcelain, run_main, unmerged, untracked  # noqa: E402
 
 # The screenshots' font fallback and colour parsing, so both look alike.
-_spec = importlib.util.spec_from_file_location("make_screenshots", ROOT / "scripts" / "make-screenshots.py")
-shots = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(shots)
+import make_screenshots as shots  # noqa: E402
 
 BACKGROUND, OUT = ROOT / "docs" / "banner-background.png", ROOT / "docs" / "banner.jpg"
 SCALE = 2  # drawn at twice the background's size, for sharp text
@@ -76,11 +72,7 @@ def line_width(line: str, fonts) -> float:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--font", help="a Nerd Font Mono .ttf (default: JetBrainsMono via fc-match)")
-    mono = parser.parse_args().font or shots.default_font()
-    if "Nerd" not in mono:
-        sys.exit(f"no Nerd Font found (got {mono!r}); pass one with --font")
+    mono = shots.nerd_font(shots.arguments(__doc__).parse_args().font)
     title_font, body_font = font_file("Space Grotesk:style=Bold"), font_file("Inter:style=Regular")
     if "SpaceGrotesk" not in title_font:
         sys.exit("Space Grotesk not found; install it for the title")

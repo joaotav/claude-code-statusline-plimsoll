@@ -1,6 +1,6 @@
 """Statusline stdin payloads: the full one and each degradation path.
 
-Shared by the tests and by scripts/make-fixtures.py. Reset times are relative
+Shared by the tests and by scripts/make_fixtures.py. Reset times are relative
 to `now` (epoch seconds), so the same-day / this-week / further-out
 formatting branches stay exercised whenever they are built.
 """

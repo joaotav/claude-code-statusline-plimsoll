@@ -5,7 +5,7 @@ Uses the tests' stubs, so the clock is frozen and the directory, repository,
 account and memory are made up; nothing from this machine is shown. Needs
 Pillow and a Nerd Font, which the status line itself does not:
 
-    python3 scripts/make-screenshots.py [--font /path/to/NerdFontMono.ttf]
+    python3 scripts/make_screenshots.py [--font /path/to/NerdFontMono.ttf]
 """
 
 import argparse
@@ -152,13 +152,23 @@ def default_font() -> str:
     return out.stdout
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+def arguments(doc: str) -> argparse.ArgumentParser:
+    """The image scripts' parser, with --font; nerd_font() checks it."""
+    parser = argparse.ArgumentParser(description=doc.splitlines()[0])
     parser.add_argument("--font", help="a Nerd Font Mono .ttf (default: JetBrainsMono via fc-match)")
-    font_path = parser.parse_args().font or default_font()
-    if "Nerd" not in font_path:
-        sys.exit(f"no Nerd Font found (got {font_path!r}); pass one with --font")
-    fonts = Fonts(font_path)
+    return parser
+
+
+def nerd_font(path: str | None) -> str:
+    """The --font given, else default_font(); exits unless it's a Nerd Font."""
+    path = path or default_font()
+    if "Nerd" not in path:
+        sys.exit(f"no Nerd Font found (got {path!r}); pass one with --font")
+    return path
+
+
+def main() -> None:
+    fonts = Fonts(nerd_font(arguments(__doc__).parse_args().font))
 
     OUT.mkdir(exist_ok=True)
     for name, *shot in SHOTS:
