@@ -1,4 +1,4 @@
-"""Value formatting: token counts, percentages, reset times and the cwd."""
+"""Value formatting: token counts, percentages, reset times, durations and the cwd."""
 
 from __future__ import annotations
 
@@ -104,6 +104,28 @@ class FmtResetTest(unittest.TestCase):
         for value in (None, "abc", float("inf")):
             with self.subTest(value=value):
                 self.assertIsNone(statusline.fmt_reset(value))
+
+
+class FmtDurationTest(unittest.TestCase):
+    def test_scales(self):
+        cases = {
+            1999: "1s",  # whole seconds, rounded down
+            59_000: "59s",
+            60_000: "1m00s",
+            135_000: "2m15s",
+            3_599_000: "59m59s",
+            3_600_000: "1h00m",
+            3_725_000: "1h02m",
+            45_000_000: "12h30m",
+        }
+        for ms, expected in cases.items():
+            with self.subTest(ms=ms):
+                self.assertEqual(statusline.fmt_duration(ms), expected)
+
+    def test_nothing_yet_is_none(self):
+        for value in (None, 0):
+            with self.subTest(value=value):
+                self.assertIsNone(statusline.fmt_duration(value))
 
 
 class CwdSegmentTest(unittest.TestCase):
