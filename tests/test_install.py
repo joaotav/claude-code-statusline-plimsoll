@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import importlib.util
 import io
 import json
 import os
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -13,17 +13,20 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
-_spec = importlib.util.spec_from_file_location("install", ROOT / "scripts" / "install.py")
-install = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(install)
+sys.path.insert(0, str(ROOT / "scripts"))
+
+import install  # noqa: E402
 
 BLOCK = {"type": "command", "command": str(ROOT / "statusline.py"), "padding": 0, "refreshInterval": 60}
 
 
-class InstallTest(unittest.TestCase):
+class SettingsTest(unittest.TestCase):
+    """A settings.json in a temporary .claude folder, with output silenced."""
+
     def setUp(self):
         self.dir = Path(self.enterContext(tempfile.TemporaryDirectory()))
         self.path = self.dir / ".claude" / "settings.json"
+        self.ours = self.dir / ".claude" / install.CONFIG_FILE
         self.enterContext(redirect_stdout(io.StringIO()))
 
     def write(self, settings) -> None:
@@ -36,6 +39,8 @@ class InstallTest(unittest.TestCase):
     def backups(self) -> list[Path]:
         return sorted(self.path.parent.glob("settings.json.bak.*"))
 
+
+class InstallTest(SettingsTest):
     def test_creates_the_file_and_its_folder(self):
         self.assertTrue(install.install(self.path))
         self.assertEqual(self.read(), {"statusLine": BLOCK})
@@ -115,23 +120,7 @@ class InstallTest(unittest.TestCase):
             self.assertEqual(install.settings_path(), Path("/home/tester/.claude-work/settings.json"))
 
 
-class UninstallTest(unittest.TestCase):
-    def setUp(self):
-        self.dir = Path(self.enterContext(tempfile.TemporaryDirectory()))
-        self.path = self.dir / ".claude" / "settings.json"
-        self.ours = self.dir / ".claude" / install.CONFIG_FILE
-        self.enterContext(redirect_stdout(io.StringIO()))
-
-    def write(self, settings) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(settings if isinstance(settings, str) else json.dumps(settings))
-
-    def read(self):
-        return json.loads(self.path.read_text())
-
-    def backups(self) -> list[Path]:
-        return sorted(self.path.parent.glob("settings.json.bak.*"))
-
+class UninstallTest(SettingsTest):
     def test_removes_the_block_and_keeps_the_rest(self):
         self.write({"model": "opus", "statusLine": BLOCK})
         self.assertTrue(install.uninstall(self.path))
